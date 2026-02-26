@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stage, Layer, Rect } from 'react-konva';
 import { useDesign } from '../context/useDesignContext';
 import ShapeNode from './ShapeNode';
@@ -10,9 +10,32 @@ const CanvasArea = ({ stageRef }) => {
         setSelectedId,
         backgroundColor,
         updateElement,
+        deleteElement,
         activeTab,
         setActiveTab
     } = useDesign();
+
+    // Handle keyboard events for deleting elements
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Delete' && selectedId) {
+                // Check if the focus is not on an input or textarea
+                const activeElement = document.activeElement;
+                const isInputFocused = activeElement && (
+                    activeElement.tagName === 'INPUT' || 
+                    activeElement.tagName === 'TEXTAREA'
+                );
+                
+                if (!isInputFocused) {
+                    e.preventDefault();
+                    deleteElement(selectedId);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedId, deleteElement]);
 
     const checkDeselect = (e) => {
         const clickedOnEmpty = e.target === e.target.getStage() || e.target.attrs.id === "bg-rect";

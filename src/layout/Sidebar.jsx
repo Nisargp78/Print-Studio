@@ -1,9 +1,10 @@
 import React from 'react';
-import { Type, Image as ImageIcon, Palette, Shapes } from 'lucide-react';
+import { Type, Image as ImageIcon, Palette, Shapes, PenTool } from 'lucide-react';
 import { useDesign } from '../context/useDesignContext';
 import SidebarItem from '../components/SidebarItem';
 
 const TABS = [
+    { id: 'quick_edit', icon: PenTool, label: 'Quick Edit' },
     { id: 'text', icon: Type, label: 'Text' },
     { id: 'elements', icon: Shapes, label: 'Elements' },
     { id: 'upload', icon: ImageIcon, label: 'Uploads' },
