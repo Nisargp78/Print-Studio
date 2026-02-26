@@ -96,7 +96,17 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
     } else if (shapeProps.type === 'hexagon') {
         node = <RegularPolygon {...commonProps} sides={6} radius={shapeProps.radius || 50} />;
     } else if (shapeProps.type === 'text') {
-        node = <Text {...commonProps} />;
+        const hasUnderline =
+            typeof shapeProps.textDecoration === 'string' &&
+            shapeProps.textDecoration.toLowerCase().includes('underline');
+        const padding =
+            typeof shapeProps.padding === 'number'
+                ? shapeProps.padding
+                : hasUnderline
+                    ? 4
+                    : 0;
+
+        node = <Text {...commonProps} padding={padding} />;
     } else if (shapeProps.type === 'image') {
         node = <KonvaImage {...commonProps} image={image} />;
     }
