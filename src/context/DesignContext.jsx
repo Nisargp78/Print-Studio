@@ -10,6 +10,7 @@ export const DesignProvider = ({ children }) => {
     const [selectedId, setSelectedId] = useState(null);
     const [backgroundColor, setBackgroundColor] = useState('#ffffff');
     const [activeTab, setActiveTab] = useState('elements');
+    const [isCanvasLocked, setIsCanvasLocked] = useState(false);
 
     const saveHistory = (currentState) => {
         setHistoryList((prev) => [...prev, JSON.parse(JSON.stringify(currentState))]);
@@ -124,6 +125,11 @@ export const DesignProvider = ({ children }) => {
         setActiveTab('quick_edit');
     };
 
+    const toggleCanvasLock = () => {
+        setIsCanvasLocked((prev) => !prev);
+        setSelectedId(null);
+    };
+
     const selectedElement = elements.find((el) => el.id === selectedId);
 
     return (
@@ -134,6 +140,7 @@ export const DesignProvider = ({ children }) => {
                 backgroundColor,
                 activeTab,
                 selectedElement,
+                isCanvasLocked,
                 historyList,
                 redoList,
                 undo,
@@ -147,6 +154,7 @@ export const DesignProvider = ({ children }) => {
                 deleteElement,
                 toggleLockElement,
                 duplicateElement,
+                toggleCanvasLock,
             }}
         >
             {children}

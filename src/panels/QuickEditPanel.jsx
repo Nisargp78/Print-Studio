@@ -8,18 +8,21 @@ const QuickEditPanel = () => {
         updateElement,
         deleteElement,
         setSelectedId,
-        setActiveTab
+        setActiveTab,
+        isCanvasLocked,
     } = useDesign();
 
     // Filter only text elements
     const textElements = elements.filter(el => el.type === 'text');
 
     const handleTextClick = (elementId) => {
+        if (isCanvasLocked) return;
         setSelectedId(elementId);
         setActiveTab('text');
     };
 
     const handleKeyDown = (e, elementId) => {
+        if (isCanvasLocked) return;
         if (e.key === 'Delete' && e.ctrlKey) {
             e.preventDefault();
             deleteElement(elementId);
@@ -28,6 +31,7 @@ const QuickEditPanel = () => {
 
     const handleDelete = (e, elementId) => {
         e.stopPropagation();
+        if (isCanvasLocked) return;
         deleteElement(elementId);
     };
 
@@ -62,8 +66,9 @@ const QuickEditPanel = () => {
                                 />
                                 <button
                                     onClick={(e) => handleDelete(e, element.id)}
-                                    className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="Delete text (or Ctrl+Delete)"
+                                    className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                                    title={isCanvasLocked ? 'Canvas locked' : 'Delete text (or Ctrl+Delete)'}
+                                    disabled={isCanvasLocked}
                                 >
                                     <Trash2 size={14} />
                                 </button>

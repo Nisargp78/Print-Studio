@@ -13,12 +13,14 @@ const CanvasArea = ({ stageRef }) => {
         updateElement,
         deleteElement,
         activeTab,
-        setActiveTab
+        setActiveTab,
+        isCanvasLocked,
     } = useDesign();
 
     // Handle keyboard events for deleting elements
     useEffect(() => {
         const handleKeyDown = (e) => {
+            if (isCanvasLocked) return;
             if (e.key === 'Delete' && selectedId) {
                 // Check if the focus is not on an input or textarea
                 const activeElement = document.activeElement;
@@ -36,9 +38,10 @@ const CanvasArea = ({ stageRef }) => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedId, deleteElement]);
+    }, [selectedId, deleteElement, isCanvasLocked]);
 
     const checkDeselect = (e) => {
+        if (isCanvasLocked) return;
         const clickedOnEmpty = e.target === e.target.getStage() || e.target.attrs.id === "bg-rect";
         if (clickedOnEmpty) {
             setSelectedId(null);
@@ -85,10 +88,12 @@ const CanvasArea = ({ stageRef }) => {
                                         shapeProps={el}
                                         isSelected={el.id === selectedId}
                                         onSelect={() => {
+                                            if (isCanvasLocked) return;
                                             setSelectedId(el.id);
                                             setActiveTab('quick_edit');
                                         }}
                                         onChange={(newProps) => updateElement(el.id, newProps)}
+                                        canvasLocked={isCanvasLocked}
                                     />
                                 ))}
                             </Layer>

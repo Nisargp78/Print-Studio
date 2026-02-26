@@ -5,7 +5,15 @@ import { useDesign } from '../context/useDesignContext';
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
 const FormatBar = () => {
-  const { selectedElement, updateElement, deleteElement, duplicateElement, toggleLockElement } = useDesign();
+  const {
+    selectedElement,
+    updateElement,
+    deleteElement,
+    duplicateElement,
+    toggleLockElement,
+    isCanvasLocked,
+    toggleCanvasLock,
+  } = useDesign();
   const [isTransparencyOpen, setIsTransparencyOpen] = useState(false);
 
   const hasSelection = !!selectedElement;
@@ -20,7 +28,7 @@ const FormatBar = () => {
     if (!hasSelection) setIsTransparencyOpen(false);
   }, [hasSelection]);
 
-  const isLocked = !!selectedElement?.locked;
+  const isLocked = hasSelection ? !!selectedElement?.locked : isCanvasLocked;
 
   const setTransparency = (value) => {
     if (!selectedElement) return;
@@ -90,13 +98,26 @@ const FormatBar = () => {
         {/* Lock */}
         <button
           type="button"
-          onClick={() => (selectedElement ? toggleLockElement(selectedElement.id) : null)}
-          disabled={!hasSelection}
+        onClick={() =>
+          hasSelection && selectedElement
+            ? toggleLockElement(selectedElement.id)
+            : toggleCanvasLock()
+        }
           className={[
             'p-2 rounded border border-transparent',
-            hasSelection ? 'hover:bg-gray-50 hover:border-gray-200' : 'cursor-not-allowed opacity-40',
+          hasSelection
+            ? 'hover:bg-gray-50 hover:border-gray-200'
+            : 'hover:bg-gray-50 hover:border-gray-200',
           ].join(' ')}
-          title={hasSelection ? (isLocked ? 'Unlock' : 'Lock') : 'Lock'}
+        title={
+          hasSelection
+            ? isLocked
+              ? 'Unlock element'
+              : 'Lock element'
+            : isCanvasLocked
+              ? 'Unlock canvas'
+              : 'Lock canvas'
+        }
         >
           {isLocked ? <Unlock size={18} /> : <Lock size={18} />}
         </button>

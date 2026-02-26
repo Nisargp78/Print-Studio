@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Rect, Circle, Text, Transformer, Image as KonvaImage, Star, RegularPolygon } from 'react-konva';
 import useImage from 'use-image';
 
-const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange }) => {
+const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = false }) => {
     const shapeRef = useRef();
     const trRef = useRef();
 
@@ -14,6 +14,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange }) => {
     }, [isSelected]);
 
     const handleDragEnd = (e) => {
+        if (canvasLocked || shapeProps.locked) return;
         onChange({
             ...shapeProps,
             x: e.target.x(),
@@ -22,7 +23,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange }) => {
     };
 
     const handleTransformEnd = () => {
-        if (shapeProps.locked) return;
+        if (canvasLocked || shapeProps.locked) return;
         const node = shapeRef.current;
         if (!node) return;
 
@@ -75,11 +76,11 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange }) => {
     const commonProps = {
         ...shapeProps,
         ref: shapeRef,
-        onClick: onSelect,
-        onTap: onSelect,
+        onClick: canvasLocked ? undefined : onSelect,
+        onTap: canvasLocked ? undefined : onSelect,
         onDragEnd: handleDragEnd,
         onTransformEnd: handleTransformEnd,
-        draggable: !shapeProps.locked,
+        draggable: !shapeProps.locked && !canvasLocked,
     };
 
     if (shapeProps.type === 'rect') {
