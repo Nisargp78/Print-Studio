@@ -1,0 +1,16 @@
+[0m[0m
+[0m[4mC:\Users\makwa\OneDrive\Desktop\Task\src\canvas\CanvasArea.jsx[24m[0m
+[0m  [2m1:17[22m  [31merror[39m  'useRef' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\makwa\OneDrive\Desktop\Task\src\canvas\ShapeNode.jsx[24m[0m
+[0m  [2m24:33[22m  [31merror[39m  'e' is defined but never used                                                                                                                                                               [2mno-unused-vars[22m[0m
+[0m  [2m62:25[22m  [31merror[39m  React Hook "useImage" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  [2mreact-hooks/rules-of-hooks[22m[0m
+[0m[0m
+[0m[4mC:\Users\makwa\OneDrive\Desktop\Task\src\components\SidebarItem.jsx[24m[0m
+[0m  [2m3:30[22m  [31merror[39m  'Icon' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\makwa\OneDrive\Desktop\Task\src\context\DesignContext.jsx[24m[0m
+[0m  [2m6:14[22m  [31merror[39m  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  [2mreact-refresh/only-export-components[22m[0m
+[0m[0m
+[0m[31m[1m✖ 5 problems (5 errors, 0 warnings)[22m[39m[0m
+[0m[31m[1m[22m[39m[0m
