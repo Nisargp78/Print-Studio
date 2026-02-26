@@ -43,30 +43,32 @@ export const DesignProvider = ({ children }) => {
     const addElement = (type, extraProps = {}) => {
         saveHistory(elements);
 
-        const newElement = {
+        const baseProps = {
             id: uuidv4(),
             type,
             x: 150,
             y: 150,
             fill: type !== 'image' ? '#0f172a' : undefined,
-            ...extraProps
         };
 
+        let typeDefaults = {};
         if (type === 'rect') {
-            newElement.width = 100;
-            newElement.height = 100;
+            typeDefaults = { width: 100, height: 100 };
         } else if (type === 'circle') {
-            newElement.radius = 50;
+            typeDefaults = { radius: 50 };
         } else if (type === 'triangle' || type === 'pentagon' || type === 'hexagon') {
-            newElement.radius = 50;
+            typeDefaults = { radius: 50 };
         } else if (type === 'star') {
-            newElement.innerRadius = 25;
-            newElement.outerRadius = 50;
+            typeDefaults = { innerRadius: 25, outerRadius: 50 };
         } else if (type === 'text') {
-            newElement.text = 'Double click to edit';
-            newElement.fontSize = 32;
-            newElement.fontFamily = 'Inter, sans-serif';
+            typeDefaults = {
+                text: 'Double click to edit',
+                fontSize: 32,
+                fontFamily: 'Inter, sans-serif',
+            };
         }
+
+        const newElement = { ...baseProps, ...typeDefaults, ...extraProps };
 
         setElements((prev) => [...prev, newElement]);
 
@@ -95,6 +97,33 @@ export const DesignProvider = ({ children }) => {
         }
     };
 
+    const toggleLockElement = (id) => {
+        saveHistory(elements);
+
+        setElements((prev) =>
+            prev.map((el) => (el.id === id ? { ...el, locked: !el.locked } : el))
+        );
+    };
+
+    const duplicateElement = (id, offset = { x: 20, y: 20 }) => {
+        const source = elements.find((el) => el.id === id);
+        if (!source) return;
+
+        saveHistory(elements);
+
+        const copy = {
+            ...source,
+            id: uuidv4(),
+            x: (source.x ?? 0) + (offset.x ?? 0),
+            y: (source.y ?? 0) + (offset.y ?? 0),
+            locked: false,
+        };
+
+        setElements((prev) => [...prev, copy]);
+        setSelectedId(copy.id);
+        setActiveTab('quick_edit');
+    };
+
     const selectedElement = elements.find((el) => el.id === selectedId);
 
     return (
@@ -116,6 +145,8 @@ export const DesignProvider = ({ children }) => {
                 addElement,
                 updateElement,
                 deleteElement,
+                toggleLockElement,
+                duplicateElement,
             }}
         >
             {children}

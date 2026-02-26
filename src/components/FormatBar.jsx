@@ -1,0 +1,136 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, Copy, Lock, Unlock, Trash2 } from 'lucide-react';
+import { useDesign } from '../context/useDesignContext';
+
+const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+
+const FormatBar = () => {
+  const { selectedElement, updateElement, deleteElement, duplicateElement, toggleLockElement } = useDesign();
+  const [isTransparencyOpen, setIsTransparencyOpen] = useState(false);
+
+  const hasSelection = !!selectedElement;
+
+  const transparency = useMemo(() => {
+    if (!selectedElement) return 0;
+    const opacity = typeof selectedElement.opacity === 'number' ? selectedElement.opacity : 1;
+    return clamp(Math.round((1 - opacity) * 100), 0, 100);
+  }, [selectedElement]);
+
+  useEffect(() => {
+    if (!hasSelection) setIsTransparencyOpen(false);
+  }, [hasSelection]);
+
+  const isLocked = !!selectedElement?.locked;
+
+  const setTransparency = (value) => {
+    if (!selectedElement) return;
+    const t = clamp(Number(value), 0, 100);
+    updateElement(selectedElement.id, { opacity: 1 - t / 100 });
+  };
+
+  return (
+    <div className="w-full flex items-center gap-2 bg-white/90 backdrop-blur border border-gray-200 shadow-sm px-3 py-2">
+        {/* Placeholders (as you said Position/Layers not required now) */}
+        <button
+          type="button"
+          className="text-sm px-2 py-1 rounded border border-gray-200 text-gray-600 bg-gray-50 cursor-not-allowed"
+          disabled
+        >
+          Position
+        </button>
+        <button
+          type="button"
+          className="text-sm px-2 py-1 rounded border border-gray-200 text-gray-600 bg-gray-50 cursor-not-allowed"
+          disabled
+        >
+          Layers
+        </button>
+
+        <div className="w-px h-6 bg-gray-200 mx-1" />
+
+        {/* Transparency */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => (hasSelection ? setIsTransparencyOpen((v) => !v) : null)}
+            disabled={!hasSelection}
+            className={[
+              'text-sm px-2 py-1 rounded border border-gray-200 flex items-center gap-2',
+              hasSelection ? 'text-gray-800 hover:bg-gray-50' : 'text-gray-400 bg-gray-50 cursor-not-allowed',
+            ].join(' ')}
+            title="Transparency"
+          >
+            Transparency
+            <span className="text-gray-500">{transparency}%</span>
+            <ChevronDown size={16} className="text-gray-500" />
+          </button>
+
+          {isTransparencyOpen && hasSelection && (
+            <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-3 w-64">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium text-gray-800">Transparency</div>
+                <div className="text-sm text-gray-600">{transparency}%</div>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={transparency}
+                onChange={(e) => setTransparency(e.target.value)}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>0%</span>
+                <span>100%</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Lock */}
+        <button
+          type="button"
+          onClick={() => (selectedElement ? toggleLockElement(selectedElement.id) : null)}
+          disabled={!hasSelection}
+          className={[
+            'p-2 rounded border border-transparent',
+            hasSelection ? 'hover:bg-gray-50 hover:border-gray-200' : 'cursor-not-allowed opacity-40',
+          ].join(' ')}
+          title={hasSelection ? (isLocked ? 'Unlock' : 'Lock') : 'Lock'}
+        >
+          {isLocked ? <Unlock size={18} /> : <Lock size={18} />}
+        </button>
+
+        {/* Copy */}
+        <button
+          type="button"
+          onClick={() => (selectedElement ? duplicateElement(selectedElement.id) : null)}
+          className={[
+            'p-2 rounded border border-transparent',
+            hasSelection && !isLocked ? 'hover:bg-gray-50 hover:border-gray-200' : 'cursor-not-allowed opacity-40',
+          ].join(' ')}
+          title="Copy"
+          disabled={!hasSelection || isLocked}
+        >
+          <Copy size={18} className={!hasSelection || isLocked ? 'text-gray-300' : 'text-gray-800'} />
+        </button>
+
+        {/* Delete */}
+        <button
+          type="button"
+          onClick={() => (selectedElement ? deleteElement(selectedElement.id) : null)}
+          className={[
+            'p-2 rounded border border-transparent text-red-600',
+            hasSelection && !isLocked ? 'hover:bg-red-50 hover:border-red-200' : 'cursor-not-allowed opacity-40',
+          ].join(' ')}
+          title="Delete"
+          disabled={!hasSelection || isLocked}
+        >
+          <Trash2 size={18} className={!hasSelection || isLocked ? 'text-red-200' : 'text-red-600'} />
+        </button>
+    </div>
+  );
+};
+
+export default FormatBar;
+

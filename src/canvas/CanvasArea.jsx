@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Stage, Layer, Rect } from 'react-konva';
 import { useDesign } from '../context/useDesignContext';
 import ShapeNode from './ShapeNode';
+import FormatBar from '../components/FormatBar';
 
 const CanvasArea = ({ stageRef }) => {
     const {
@@ -48,42 +49,52 @@ const CanvasArea = ({ stageRef }) => {
     };
 
     return (
-        <div className="flex-1 overflow-auto relative flex items-center justify-center p-8 bg-gray-100/50">
-            <div
-                className="bg-white shadow-2xl max-w-full max-h-full transition-shadow hover:shadow-xl"
-                style={{ backgroundColor }}
-            >
-                <Stage
-                    width={800}
-                    height={600}
-                    onMouseDown={checkDeselect}
-                    onTouchStart={checkDeselect}
-                    ref={stageRef}
-                >
-                    <Layer>
-                        {/* Background Rect to ensure export has background color */}
-                        <Rect
-                            x={0} y={0}
-                            width={800} height={600}
-                            fill={backgroundColor}
-                            listening={false}
-                            id="bg-rect"
-                        />
+        <div className="flex-1 overflow-auto bg-gray-100/50">
+            <div className="min-h-full w-full flex flex-col">
+                {/* Full‑width format bar across the canvas area */}
+                <div className="sticky top-0 z-30">
+                    <FormatBar />
+                </div>
 
-                        {elements.map((el) => (
-                            <ShapeNode
-                                key={el.id}
-                                shapeProps={el}
-                                isSelected={el.id === selectedId}
-                                onSelect={() => {
-                                    setSelectedId(el.id);
-                                    setActiveTab('quick_edit');
-                                }}
-                                onChange={(newProps) => updateElement(el.id, newProps)}
-                            />
-                        ))}
-                    </Layer>
-                </Stage>
+                {/* Centered canvas below the bar */}
+                <div className="w-full flex justify-center">
+                    <div
+                        className="bg-white shadow-2xl max-w-full max-h-full transition-shadow hover:shadow-xl"
+                        style={{ backgroundColor }}
+                    >
+                        <Stage
+                            width={800}
+                            height={600}
+                            onMouseDown={checkDeselect}
+                            onTouchStart={checkDeselect}
+                            ref={stageRef}
+                        >
+                            <Layer>
+                                {/* Background Rect to ensure export has background color */}
+                                <Rect
+                                    x={0} y={0}
+                                    width={800} height={600}
+                                    fill={backgroundColor}
+                                    listening={false}
+                                    id="bg-rect"
+                                />
+
+                                {elements.map((el) => (
+                                    <ShapeNode
+                                        key={el.id}
+                                        shapeProps={el}
+                                        isSelected={el.id === selectedId}
+                                        onSelect={() => {
+                                            setSelectedId(el.id);
+                                            setActiveTab('quick_edit');
+                                        }}
+                                        onChange={(newProps) => updateElement(el.id, newProps)}
+                                    />
+                                ))}
+                            </Layer>
+                        </Stage>
+                    </div>
+                </div>
             </div>
         </div>
     );

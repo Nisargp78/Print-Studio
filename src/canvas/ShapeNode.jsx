@@ -22,6 +22,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange }) => {
     };
 
     const handleTransformEnd = () => {
+        if (shapeProps.locked) return;
         const node = shapeRef.current;
         if (!node) return;
 
@@ -78,7 +79,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange }) => {
         onTap: onSelect,
         onDragEnd: handleDragEnd,
         onTransformEnd: handleTransformEnd,
-        draggable: true,
+        draggable: !shapeProps.locked,
     };
 
     if (shapeProps.type === 'rect') {
@@ -102,7 +103,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange }) => {
     return (
         <React.Fragment>
             {node}
-            {isSelected && (
+            {isSelected && !shapeProps.locked && (
                 <Transformer
                     ref={trRef}
                     boundBoxFunc={(oldBox, newBox) => {

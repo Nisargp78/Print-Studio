@@ -13,7 +13,7 @@ const TextPanel = () => {
             <button
                 onClick={() => addElement('text', { 
                     text: 'Header',
-                    fontSize: 96, 
+                    fontSize: 80, 
                     fontWeight: 'bold',
                     fill: '#1f2937'
                 })}
