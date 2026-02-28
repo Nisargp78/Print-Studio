@@ -6,11 +6,16 @@ export const DesignProvider = ({ children }) => {
     const [elements, setElements] = useState([]);
     const [historyList, setHistoryList] = useState([]);
     const [redoList, setRedoList] = useState([]);
+    const [uploadedImages, setUploadedImages] = useState([]);
+    const [clipboard, setClipboard] = useState(null);
 
     const [selectedId, setSelectedId] = useState(null);
     const [backgroundColor, setBackgroundColor] = useState('#ffffff');
+    const [backgroundImage, setBackgroundImage] = useState(null);
     const [activeTab, setActiveTab] = useState('elements');
     const [isCanvasLocked, setIsCanvasLocked] = useState(false);
+    const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600, name: 'Default (800x600)' });
+    const [zoom, setZoom] = useState(1);
 
     const saveHistory = (currentState) => {
         setHistoryList((prev) => [...prev, JSON.parse(JSON.stringify(currentState))]);
@@ -54,13 +59,13 @@ export const DesignProvider = ({ children }) => {
 
         let typeDefaults = {};
         if (type === 'rect') {
-            typeDefaults = { width: 100, height: 100 };
+            typeDefaults = { width: 100, height: 100, shapeFilled: false };
         } else if (type === 'circle') {
-            typeDefaults = { radius: 50 };
+            typeDefaults = { radius: 50, shapeFilled: false };
         } else if (type === 'triangle' || type === 'pentagon' || type === 'hexagon') {
-            typeDefaults = { radius: 50 };
+            typeDefaults = { radius: 50, shapeFilled: false };
         } else if (type === 'star') {
-            typeDefaults = { innerRadius: 25, outerRadius: 50 };
+            typeDefaults = { innerRadius: 25, outerRadius: 50, shapeFilled: false };
         } else if (type === 'text') {
             typeDefaults = {
                 text: 'Double click to edit',
@@ -71,6 +76,14 @@ export const DesignProvider = ({ children }) => {
                 textDecoration: '',
                 align: 'left',
                 opacity: 1,
+            };
+        } else if (type.startsWith('icon-')) {
+            // Handle icon types as vector shapes
+            typeDefaults = {
+                width: 50,
+                height: 50,
+                iconType: type,
+                iconFilled: false,
             };
         }
 
@@ -130,9 +143,63 @@ export const DesignProvider = ({ children }) => {
         setActiveTab('quick_edit');
     };
 
+    const copyElement = (id) => {
+        const source = elements.find((el) => el.id === id);
+        if (!source) return;
+        setClipboard(JSON.parse(JSON.stringify(source)));
+    };
+
+    const pasteElement = () => {
+        if (!clipboard) return;
+
+        saveHistory(elements);
+
+        const pasted = {
+            ...clipboard,
+            id: uuidv4(),
+            x: (clipboard.x ?? 0) + 20,
+            y: (clipboard.y ?? 0) + 20,
+            locked: false,
+        };
+
+        setElements((prev) => [...prev, pasted]);
+        setSelectedId(pasted.id);
+        setActiveTab('quick_edit');
+    };
+
     const toggleCanvasLock = () => {
         setIsCanvasLocked((prev) => !prev);
         setSelectedId(null);
+    };
+
+    const addUploadedImage = (imageData) => {
+        setUploadedImages((prev) => [...prev, imageData]);
+    };
+
+    const removeUploadedImage = (id) => {
+        setUploadedImages((prev) => prev.filter((img) => img.id !== id));
+    };
+
+    const addImageToCanvas = (uploadedImage) => {
+        saveHistory(elements);
+        setElements((prev) => [
+            ...prev,
+            {
+                id: uuidv4(),
+                type: 'image',
+                x: 100,
+                y: 100,
+                width: 200,
+                height: 200,
+                src: uploadedImage.src,
+                originalWidth: uploadedImage.originalWidth,
+                originalHeight: uploadedImage.originalHeight,
+            }
+        ]);
+    };
+
+    const removeBackgroundImage = () => {
+        setBackgroundImage(null);
     };
 
     const selectedElement = elements.find((el) => el.id === selectedId);
@@ -150,18 +217,31 @@ export const DesignProvider = ({ children }) => {
                 isCanvasLocked,
                 historyList,
                 redoList,
+                uploadedImages,
+                backgroundImage,
+                canvasSize,
+                zoom,
                 undo,
                 redo,
                 setElements,
                 setSelectedId,
                 setBackgroundColor,
+                setBackgroundImage,
                 setActiveTab,
+                setCanvasSize,
+                setZoom,
                 addElement,
                 updateElement,
                 deleteElement,
                 toggleLockElement,
                 duplicateElement,
+                copyElement,
+                pasteElement,
                 toggleCanvasLock,
+                addUploadedImage,
+                removeUploadedImage,
+                addImageToCanvas,
+                removeBackgroundImage,
             }}
         >
             {children}

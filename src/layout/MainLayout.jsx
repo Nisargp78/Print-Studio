@@ -12,10 +12,10 @@ const MainLayout = () => {
         <div className="flex flex-col h-screen bg-gray-100 text-gray-900 font-sans">
             <TopBar stageRef={stageRef} />
             <div className="flex flex-1 overflow-hidden">
-                <Sidebar />
-                <PanelManager />
-                <CanvasArea stageRef={stageRef} />
-            </div>
+            <Sidebar />
+            <PanelManager />
+            <CanvasArea stageRef={stageRef} />
+        </div>
         </div>
     );
 };

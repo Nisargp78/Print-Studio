@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bold, ChevronDown, Copy, Droplet, Italic, Lock, Trash2, Underline, Unlock, Image as ImageIcon, Layers, MoveUp, MoveDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Bold, ChevronDown, Copy, Italic, Lock, Trash2, Underline, Unlock, Image as ImageIcon, Layers, MoveUp, MoveDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useDesign } from '../context/useDesignContext';
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -162,25 +162,23 @@ const FormatBar = () => {
 
   return (
     <div className="w-full flex items-center gap-2 bg-white/90 backdrop-blur border border-gray-200 shadow-sm px-3 py-2">
-      {/* Color controls - show for text and shapes */}
-      {(isText || isShape) && (
-        <div className="flex items-center gap-1 mr-2">
-          <button
-            type="button"
-            className="w-8 h-8 rounded border border-gray-300 bg-white flex items-center justify-center"
-            title={isText ? 'Text color' : 'Fill color'}
-          >
-            <Droplet size={16} className="text-gray-700" />
-          </button>
-          <input
-            type="color"
-            value={currentFill}
-            onChange={(e) => handleFillColorChange(e.target.value)}
-            className="w-8 h-8 rounded border border-gray-200 cursor-pointer"
-            title={isText ? 'Text color' : 'Fill color'}
-          />
-        </div>
-      )}
+      {/* Color controls - always show but disabled when nothing selected */}
+      <div className={[
+        'flex items-center gap-1 mr-2 px-2 py-1 rounded',
+        !hasSelection && 'opacity-40 cursor-not-allowed'
+      ].join(' ')}>
+        <input
+          type="color"
+          value={currentFill}
+          onChange={(e) => handleFillColorChange(e.target.value)}
+          disabled={!hasSelection}
+          className={[
+            'w-8 h-8 rounded border border-gray-200',
+            hasSelection ? 'cursor-pointer' : 'cursor-not-allowed'
+          ].join(' ')}
+          title={isText ? 'Text color' : 'Fill color'}
+        />
+      </div>
 
       {/* Text formatting controls - show only for text */}
       {isText && (
@@ -255,93 +253,101 @@ const FormatBar = () => {
         </button>
       )}
 
-      {/* Position control - show when element is selected */}
-      {hasSelection && (
-        <div className="relative format-dropdown">
-          <button
-            type="button"
-            onClick={() => setIsPositionOpen((v) => !v)}
-            className="text-sm px-3 py-1.5 rounded border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2"
-            title="Position"
-          >
-            Position
-            <ChevronDown size={16} className="text-gray-500" />
-          </button>
+      {/* Position control - always show but disabled when nothing selected */}
+      <div className="relative format-dropdown">
+        <button
+          type="button"
+          onClick={() => hasSelection && setIsPositionOpen((v) => !v)}
+          disabled={!hasSelection}
+          className={[
+            'text-sm px-3 py-1.5 rounded border flex items-center gap-2',
+            hasSelection 
+              ? 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50' 
+              : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
+          ].join(' ')}
+          title="Position"
+        >
+          Position
+          <ChevronDown size={16} className="text-gray-500" />
+        </button>
 
-          {isPositionOpen && (
-            <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-3 w-64 z-50">
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-700 mb-1 block">X Position</label>
-                  <input
-                    type="number"
-                    value={Math.round(selectedElement.x || 0)}
-                    onChange={(e) => handlePositionChange('x', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-700 mb-1 block">Y Position</label>
-                  <input
-                    type="number"
-                    value={Math.round(selectedElement.y || 0)}
-                    onChange={(e) => handlePositionChange('y', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
-                  />
-                </div>
+        {isPositionOpen && hasSelection && (
+          <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-3 w-64 z-50">
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">X Position</label>
+                <input
+                  type="number"
+                  value={Math.round(selectedElement.x || 0)}
+                  onChange={(e) => handlePositionChange('x', e.target.value)}
+                  className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">Y Position</label>
+                <input
+                  type="number"
+                  value={Math.round(selectedElement.y || 0)}
+                  onChange={(e) => handlePositionChange('y', e.target.value)}
+                  className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                />
               </div>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
-      {/* Layers control - show when element is selected */}
-      {hasSelection && (
-        <div className="relative format-dropdown">
-          <button
-            type="button"
-            onClick={() => setIsLayersOpen((v) => !v)}
-            className="text-sm px-3 py-1.5 rounded border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2"
-            title="Layers"
-          >
-            <Layers size={16} />
-            Layers
-          </button>
+      {/* Layers control - always show but disabled when nothing selected */}
+      <div className="relative format-dropdown">
+        <button
+          type="button"
+          onClick={() => hasSelection && setIsLayersOpen((v) => !v)}
+          disabled={!hasSelection}
+          className={[
+            'text-sm px-3 py-1.5 rounded border flex items-center gap-2',
+            hasSelection 
+              ? 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50' 
+              : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
+          ].join(' ')}
+          title="Layers"
+        >
+          <Layers size={16} />
+          Layers
+        </button>
 
-          {isLayersOpen && (
-            <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-2 w-48 z-50">
-              <button
-                onClick={bringToFront}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded flex items-center gap-2"
-              >
-                <ArrowUp size={16} />
-                Bring to Front
-              </button>
-              <button
-                onClick={moveLayerUp}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded flex items-center gap-2"
-              >
-                <MoveUp size={16} />
-                Bring Forward
-              </button>
-              <button
-                onClick={moveLayerDown}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded flex items-center gap-2"
-              >
-                <MoveDown size={16} />
-                Send Backward
-              </button>
-              <button
-                onClick={sendToBack}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded flex items-center gap-2"
-              >
-                <ArrowDown size={16} />
-                Send to Back
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        {isLayersOpen && hasSelection && (
+          <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-2 w-48 z-50">
+            <button
+              onClick={bringToFront}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded flex items-center gap-2"
+            >
+              <ArrowUp size={16} />
+              Bring to Front
+            </button>
+            <button
+              onClick={moveLayerUp}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded flex items-center gap-2"
+            >
+              <MoveUp size={16} />
+              Bring Forward
+            </button>
+            <button
+              onClick={moveLayerDown}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded flex items-center gap-2"
+            >
+              <MoveDown size={16} />
+              Send Backward
+            </button>
+            <button
+              onClick={sendToBack}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded flex items-center gap-2"
+            >
+              <ArrowDown size={16} />
+              Send to Back
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="w-px h-6 bg-gray-200 mx-1" />
 

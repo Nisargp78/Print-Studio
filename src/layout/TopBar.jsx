@@ -1,9 +1,17 @@
 import React from 'react';
-import { Palette, Download, Undo as UndoIcon, Redo as RedoIcon } from 'lucide-react';
+import { Brush, Download, Undo as UndoIcon, Redo as RedoIcon, ZoomIn, ZoomOut } from 'lucide-react';
 import { useDesign } from '../context/useDesignContext';
 
 const TopBar = ({ stageRef }) => {
-    const { setSelectedId, undo, redo, historyList, redoList } = useDesign();
+    const { setSelectedId, undo, redo, historyList, redoList, zoom, setZoom } = useDesign();
+
+    const handleZoomIn = () => {
+        setZoom((prev) => Math.min(prev + 0.1, 2)); // Max 200%
+    };
+
+    const handleZoomOut = () => {
+        setZoom((prev) => Math.max(prev - 0.1, 0.5)); // Min 50%
+    };
 
     const handleExport = () => {
         setSelectedId(null); // Deselect items to remove transform bounding box
@@ -21,14 +29,40 @@ const TopBar = ({ stageRef }) => {
 
     return (
         <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-20 shrink-0">
-            <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <Palette size={20} className="text-white" />
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
+                        <Brush size={20} className="text-white" />
+                    </div>
+                    <div className="font-bold text-xl text-gray-800 tracking-tight">PrintStudio</div>
                 </div>
-                <div className="font-bold text-xl text-gray-800 tracking-tight">UseToPrint</div>
             </div>
 
             <div className="flex items-center gap-3">
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1 border-r pr-3">
+                    <button
+                        onClick={handleZoomOut}
+                        disabled={zoom <= 0.5}
+                        className="p-2 bg-black text-white hover:bg-gray-800 rounded disabled:opacity-30 disabled:hover:bg-black transition"
+                        title="Zoom Out"
+                    >
+                        <ZoomOut size={18} />
+                    </button>
+                    <span className="text-sm font-medium text-gray-700 w-14 text-center">
+                        {Math.round(zoom * 100)}%
+                    </span>
+                    <button
+                        onClick={handleZoomIn}
+                        disabled={zoom >= 2}
+                        className="p-2 bg-black text-white hover:bg-gray-800 rounded disabled:opacity-30 disabled:hover:bg-black transition"
+                        title="Zoom In"
+                    >
+                        <ZoomIn size={18} />
+                    </button>
+                </div>
+
+                {/* Undo/Redo Controls */}
                 <div className="flex items-center gap-1">
                     <button
                         onClick={undo}

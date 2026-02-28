@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Droplet, ChevronDown } from 'lucide-react';
+import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, ChevronDown } from 'lucide-react';
 import { useDesign } from '../../context/useDesignContext';
 import FontPicker from '../fontpicker/FontPicker';
 import FONTS from '../../data/fonts';
@@ -297,12 +297,6 @@ const TextToolbar = () => {
 
       {/* Color Picker */}
       <div className="flex items-center gap-2">
-        <button
-          className="w-8 h-8 rounded border border-gray-200 bg-white flex items-center justify-center"
-          title="Text Color"
-        >
-          <Droplet size={16} className="text-gray-700" />
-        </button>
         <input
           type="color"
           value={fill}

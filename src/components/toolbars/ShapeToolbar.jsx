@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Droplet, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useDesign } from '../../context/useDesignContext';
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -15,6 +15,10 @@ const ShapeToolbar = () => {
   if (!selectedElement) return null;
 
   const fill = selectedElement.fill || '#0f172a';
+  const isShapeElement = ['rect', 'circle', 'triangle', 'star', 'pentagon', 'hexagon'].includes(selectedElement.type);
+  const isIconElement = selectedElement.type?.startsWith('icon-');
+  const shapeFilled = Boolean(selectedElement.shapeFilled);
+  const iconFilled = Boolean(selectedElement.iconFilled);
   const opacity = selectedElement.opacity || 1;
   const transparency = clamp(Math.round((1 - opacity) * 100), 0, 100);
 
@@ -32,12 +36,6 @@ const ShapeToolbar = () => {
       {/* Fill Color */}
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium text-gray-600">Fill:</span>
-        <button
-          className="w-8 h-8 rounded border border-gray-200 bg-white flex items-center justify-center"
-          title="Fill Color"
-        >
-          <Droplet size={16} className="text-gray-700" />
-        </button>
         <input
           type="color"
           value={fill}
@@ -48,6 +46,38 @@ const ShapeToolbar = () => {
       </div>
 
       <div className="w-px h-6 bg-gray-200" />
+
+      {isShapeElement && (
+        <>
+          <label className="flex items-center gap-2 text-xs text-gray-700 select-none">
+            <input
+              type="checkbox"
+              checked={shapeFilled}
+              onChange={(e) => handleUpdate({ shapeFilled: e.target.checked })}
+              className="w-4 h-4 cursor-pointer"
+            />
+            Filled
+          </label>
+
+          <div className="w-px h-6 bg-gray-200" />
+        </>
+      )}
+
+      {isIconElement && (
+        <>
+          <label className="flex items-center gap-2 text-xs text-gray-700 select-none">
+            <input
+              type="checkbox"
+              checked={iconFilled}
+              onChange={(e) => handleUpdate({ iconFilled: e.target.checked })}
+              className="w-4 h-4 cursor-pointer"
+            />
+            Filled
+          </label>
+
+          <div className="w-px h-6 bg-gray-200" />
+        </>
+      )}
 
       {/* Opacity/Transparency */}
       <div className="relative">

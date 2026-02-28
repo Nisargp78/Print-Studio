@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Rect, Circle, Text, Transformer, Image as KonvaImage, Star, RegularPolygon } from 'react-konva';
 import useImage from 'use-image';
+import IconShape from './IconShape';
 
 const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = false }) => {
     const shapeRef = useRef();
@@ -20,8 +21,11 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
         const stageBox = stage.container().getBoundingClientRect();
         const textPosition = textNode.absolutePosition();
 
+        // Create wrapper for textarea with handles
+        const wrapper = document.createElement('div');
         const textarea = document.createElement('textarea');
-        document.body.appendChild(textarea);
+        wrapper.appendChild(textarea);
+        document.body.appendChild(wrapper);
 
         const fontStyleValue = textNode.fontStyle() || 'normal';
         const isBold = fontStyleValue.includes('bold');
@@ -31,12 +35,117 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
         const nodePadding = typeof textNode.padding() === 'number' ? textNode.padding() : 0;
         const nodeWidth = Math.max(40, textNode.width());
         const nodeHeight = Math.max(textNode.fontSize(), textNode.height());
-        textarea.style.position = 'absolute';
-        textarea.style.top = `${stageBox.top + textPosition.y}px`;
-        textarea.style.left = `${stageBox.left + textPosition.x}px`;
-        textarea.style.width = `${nodeWidth}px`;
-        textarea.style.height = 'auto';
-        textarea.style.minHeight = `${nodeHeight}px`;
+        
+        // Style wrapper
+        wrapper.style.position = 'absolute';
+        wrapper.style.top = `${stageBox.top + textPosition.y}px`;
+        wrapper.style.left = `${stageBox.left + textPosition.x}px`;
+        wrapper.style.width = `${nodeWidth}px`;
+        wrapper.style.height = `${nodeHeight + nodePadding * 2}px`;
+        wrapper.style.zIndex = '1000';
+        wrapper.style.border = '1px solid #3b82f6';
+        wrapper.style.boxSizing = 'border-box';
+        
+        // Add corner and edge handles with resize functionality
+        const handlePositions = [
+            { top: '-5px', left: '-5px', cursor: 'nwse-resize', type: 'tl' }, // top-left
+            { top: '-5px', left: '50%', transform: 'translateX(-50%)', cursor: 'ns-resize', type: 't' }, // top-center
+            { top: '-5px', right: '-5px', cursor: 'nesw-resize', type: 'tr' }, // top-right
+            { top: '50%', right: '-5px', transform: 'translateY(-50%)', cursor: 'ew-resize', type: 'r' }, // middle-right
+            { bottom: '-5px', right: '-5px', cursor: 'nwse-resize', type: 'br' }, // bottom-right
+            { bottom: '-5px', left: '50%', transform: 'translateX(-50%)', cursor: 'ns-resize', type: 'b' }, // bottom-center
+            { bottom: '-5px', left: '-5px', cursor: 'nesw-resize', type: 'bl' }, // bottom-left
+            { top: '50%', left: '-5px', transform: 'translateY(-50%)', cursor: 'ew-resize', type: 'l' }, // middle-left
+        ];
+
+        handlePositions.forEach(pos => {
+            const handle = document.createElement('div');
+            handle.style.position = 'absolute';
+            handle.style.width = '8px';
+            handle.style.height = '8px';
+            handle.style.backgroundColor = 'white';
+            handle.style.border = '1px solid #3b82f6';
+            handle.style.cursor = pos.cursor;
+            handle.style.zIndex = '1001';
+            handle.style.pointerEvents = 'auto';
+            Object.keys(pos).forEach(key => {
+                if (key !== 'cursor' && key !== 'type') {
+                    handle.style[key] = pos[key];
+                }
+            });
+            
+            // Add resize functionality
+            let isResizing = false;
+            let startX, startY, startWidth, startHeight, startTop, startLeft;
+            
+            handle.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = wrapper.offsetWidth;
+                startHeight = wrapper.offsetHeight;
+                startTop = wrapper.offsetTop;
+                startLeft = wrapper.offsetLeft;
+                e.preventDefault();
+            });
+            
+            const handleMouseMove = (e) => {
+                if (!isResizing) return;
+                
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                const type = pos.type;
+                
+                let newWidth = startWidth;
+                let newHeight = startHeight;
+                let newTop = startTop;
+                let newLeft = startLeft;
+                
+                // Handle horizontal resizing
+                if (type.includes('r')) newWidth = Math.max(40, startWidth + deltaX);
+                if (type.includes('l')) {
+                    newWidth = Math.max(40, startWidth - deltaX);
+                    newLeft = startLeft + deltaX;
+                }
+                
+                // Handle vertical resizing
+                if (type.includes('b')) newHeight = Math.max(20, startHeight + deltaY);
+                if (type.includes('t')) {
+                    newHeight = Math.max(20, startHeight - deltaY);
+                    newTop = startTop + deltaY;
+                }
+                
+                wrapper.style.width = `${newWidth}px`;
+                wrapper.style.height = `${newHeight}px`;
+                wrapper.style.top = `${newTop}px`;
+                wrapper.style.left = `${newLeft}px`;
+                
+                resizeTextarea();
+            };
+            
+            const handleMouseUp = () => {
+                isResizing = false;
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mouseup', handleMouseUp);
+            };
+            
+            handle.addEventListener('mouseenter', () => {
+                if (isResizing) {
+                    window.addEventListener('mousemove', handleMouseMove);
+                    window.addEventListener('mouseup', handleMouseUp);
+                }
+            });
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            
+            wrapper.appendChild(handle);
+        });
+        
+        // Style textarea
+        textarea.style.position = 'relative';
+        textarea.style.width = '100%';
+        textarea.style.height = '100%';
         textarea.style.fontSize = `${textNode.fontSize()}px`;
         textarea.style.fontFamily = textNode.fontFamily();
         textarea.style.fontWeight = isBold ? 'bold' : 'normal';
@@ -44,23 +153,24 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
         textarea.style.lineHeight = `${textNode.lineHeight()}`;
         textarea.style.textAlign = textNode.align();
         textarea.style.color = textNode.fill();
-        textarea.style.border = '0';
+        textarea.style.border = 'none';
         textarea.style.padding = `${nodePadding}px`;
         textarea.style.margin = '0';
         textarea.style.boxSizing = 'border-box';
         textarea.style.overflow = 'hidden';
-        textarea.style.background = 'white';
+        textarea.style.background = 'transparent';
         textarea.style.outline = 'none';
         textarea.style.resize = 'none';
-        textarea.style.zIndex = '1000';
-        textarea.style.transformOrigin = 'left top';
+        textarea.style.wordWrap = 'break-word';
+        textarea.style.whiteSpace = 'pre-wrap';
 
         const rotation = textNode.rotation();
         let transform = '';
         if (rotation) {
             transform += `rotate(${rotation}deg)`;
         }
-        textarea.style.transform = transform;
+        wrapper.style.transform = transform;
+        wrapper.style.transformOrigin = 'left top';
 
         textNode.hide();
         if (trRef.current) trRef.current.hide();
@@ -70,8 +180,11 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
         const resizeTextarea = () => {
-            textarea.style.height = 'auto';
-            textarea.style.height = `${Math.max(nodeHeight, textarea.scrollHeight)}px`;
+            // Update wrapper height based on textarea content
+            const scrollHeight = textarea.scrollHeight;
+            const requiredHeight = Math.max(nodeHeight + nodePadding * 2, scrollHeight + nodePadding * 2);
+            wrapper.style.height = `${requiredHeight}px`;
+            textarea.style.height = `${scrollHeight}px`;
         };
 
         resizeTextarea();
@@ -89,8 +202,8 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
                 });
             }
 
-            if (document.body.contains(textarea)) {
-                document.body.removeChild(textarea);
+            if (document.body.contains(wrapper)) {
+                document.body.removeChild(wrapper);
             }
 
             textNode.show();
@@ -110,7 +223,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
         };
 
         const handleOutsideClick = (e) => {
-            if (e.target !== textarea) {
+            if (!wrapper.contains(e.target)) {
                 removeTextarea(true);
             }
         };
@@ -152,7 +265,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
         const scaleX = node.scaleX();
         const scaleY = node.scaleY();
 
-        if (shapeProps.type === 'rect' || shapeProps.type === 'image') {
+        if (shapeProps.type === 'rect' || shapeProps.type === 'image' || shapeProps.type.startsWith('icon-')) {
             onChange({
                 ...shapeProps,
                 x: node.x(),
@@ -177,6 +290,14 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
                 y: node.y(),
                 innerRadius: Math.max(5, shapeProps.innerRadius * scale),
                 outerRadius: Math.max(5, shapeProps.outerRadius * scale),
+                rotation: node.rotation()
+            });
+        } else if (shapeProps.type === 'text') {
+            onChange({
+                ...shapeProps,
+                x: node.x(),
+                y: node.y(),
+                width: Math.max(node.width() * scaleX, node.fontSize() || 20),
                 rotation: node.rotation()
             });
         } else {
@@ -200,7 +321,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
         node.scaleX(1);
         node.scaleY(1);
 
-        if (shapeProps.type === 'rect' || shapeProps.type === 'image') {
+        if (shapeProps.type === 'rect' || shapeProps.type === 'image' || shapeProps.type.startsWith('icon-')) {
             onChange({
                 ...shapeProps,
                 x: node.x(),
@@ -227,6 +348,15 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
                 outerRadius: Math.max(5, shapeProps.outerRadius * scale),
                 rotation: node.rotation()
             });
+        } else if (shapeProps.type === 'text') {
+            onChange({
+                ...shapeProps,
+                x: node.x(),
+                y: node.y(),
+                width: Math.max(node.width() * scaleX, node.fontSize() || 20),
+
+                rotation: node.rotation()
+            });
         } else {
             onChange({
                 ...shapeProps,
@@ -245,6 +375,9 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
     };
 
     let node = null;
+    const shapeFilled = Boolean(shapeProps.shapeFilled);
+    const shapeColor = shapeProps.fill || '#0f172a';
+    const shapeStrokeWidth = 4;
     const commonProps = {
         ...shapeProps,
         ref: shapeRef,
@@ -259,17 +392,19 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
     };
 
     if (shapeProps.type === 'rect') {
-        node = <Rect {...commonProps} />;
+        node = <Rect {...commonProps} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type === 'circle') {
-        node = <Circle {...commonProps} />;
+        node = <Circle {...commonProps} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type === 'triangle') {
-        node = <RegularPolygon {...commonProps} sides={3} radius={shapeProps.radius || 50} />;
+        node = <RegularPolygon {...commonProps} sides={3} radius={shapeProps.radius || 50} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type === 'star') {
-        node = <Star {...commonProps} numPoints={5} innerRadius={shapeProps.innerRadius || 25} outerRadius={shapeProps.outerRadius || 50} />;
+        node = <Star {...commonProps} numPoints={5} innerRadius={shapeProps.innerRadius || 25} outerRadius={shapeProps.outerRadius || 50} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type === 'pentagon') {
-        node = <RegularPolygon {...commonProps} sides={5} radius={shapeProps.radius || 50} />;
+        node = <RegularPolygon {...commonProps} sides={5} radius={shapeProps.radius || 50} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type === 'hexagon') {
-        node = <RegularPolygon {...commonProps} sides={6} radius={shapeProps.radius || 50} />;
+        node = <RegularPolygon {...commonProps} sides={6} radius={shapeProps.radius || 50} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
+    } else if (shapeProps.type.startsWith('icon-')) {
+        node = <IconShape {...commonProps} iconType={shapeProps.iconType || shapeProps.type} />;
     } else if (shapeProps.type === 'text') {
         const hasUnderline =
             typeof shapeProps.textDecoration === 'string' &&
@@ -319,11 +454,19 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
             {isSelected && !shapeProps.locked && (
                 <Transformer
                     ref={trRef}
-                    keepRatio={shapeProps.type === 'image'}
+                    keepRatio={shapeProps.type === 'image' || shapeProps.type.startsWith('icon-')}
                     boundBoxFunc={(oldBox, newBox) => {
                         if (newBox.width < 5 || newBox.height < 5) return oldBox;
                         return newBox;
                     }}
+                    enabledAnchors={['top-left', 'top-center', 'top-right', 'middle-right', 'bottom-right', 'bottom-center', 'bottom-left', 'middle-left']}
+                    anchorSize={10}
+                    anchorStroke="#3b82f6"
+                    anchorFill="white"
+                    anchorStrokeWidth={2}
+                    borderStroke="#3b82f6"
+                    borderStrokeWidth={1}
+                    rotateEnabled={true}
                 />
             )}
         </React.Fragment>

@@ -12,30 +12,33 @@ import CommonToolbar from './toolbars/CommonToolbar';
 const Toolbar = () => {
   const { selectedType, selectedElement } = useDesign();
 
-  // Don't render toolbar if nothing is selected
-  if (!selectedElement) {
-    return null;
-  }
-
   return (
-    <div className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
-      <div className="px-4 py-3 flex items-center gap-4">
-        {/* Element Type Indicator */}
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          {selectedType}
-        </div>
+    <div className="bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
+      <div className="px-4 py-3 flex items-center gap-4 h-auto">
+        {/* Element Type Indicator - only show if something is selected */}
+        {selectedElement && (
+          <>
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              {selectedType}
+            </div>
 
-        <div className="w-px h-6 bg-gray-200" />
-
-        {/* Type-specific toolbar */}
-        {selectedType === 'text' && <TextToolbar />}
-        {selectedType === 'image' && <ImageToolbar />}
-        {['rect', 'circle', 'triangle', 'star', 'pentagon', 'hexagon'].includes(selectedType) && (
-          <ShapeToolbar />
+            <div className="w-px h-6 bg-gray-200" />
+          </>
         )}
 
-        {/* Common controls for all types */}
-        <div className="ml-auto">
+        {/* Type-specific toolbar - only show if something is selected */}
+        {selectedElement && (
+          <>
+            {selectedType === 'text' && <TextToolbar />}
+            {selectedType === 'image' && <ImageToolbar />}
+            {(['rect', 'circle', 'triangle', 'star', 'pentagon', 'hexagon'].includes(selectedType) || selectedType?.startsWith('icon-')) && (
+              <ShapeToolbar />
+            )}
+          </>
+        )}
+
+        {/* Common controls for all types - always visible */}
+        <div className={selectedElement ? 'ml-auto' : ''}>
           <CommonToolbar />
         </div>
       </div>
