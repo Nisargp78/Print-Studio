@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Stage, Layer, Rect } from 'react-konva';
 import { useDesign } from '../context/useDesignContext';
 import ShapeNode from './ShapeNode';
-import FormatBar from '../components/FormatBar';
+import Toolbar from '../components/Toolbar';
 
 const CanvasArea = ({ stageRef }) => {
     const {
@@ -54,13 +54,11 @@ const CanvasArea = ({ stageRef }) => {
     return (
         <div className="flex-1 overflow-auto bg-gray-100/50">
             <div className="min-h-full w-full flex flex-col">
-                {/* Full‑width format bar across the canvas area */}
-                <div className="sticky top-0 z-30">
-                    <FormatBar />
-                </div>
+                {/* Top dynamic toolbar */}
+                <Toolbar />
 
-                {/* Centered canvas below the bar */}
-                <div className="w-full flex justify-center">
+                {/* Centered canvas */}
+                <div className="w-full flex justify-center flex-1">
                     <div
                         className="bg-white shadow-2xl max-w-full max-h-full transition-shadow hover:shadow-xl"
                         style={{ backgroundColor }}

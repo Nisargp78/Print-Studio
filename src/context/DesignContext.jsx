@@ -131,12 +131,14 @@ export const DesignProvider = ({ children }) => {
     };
 
     const selectedElement = elements.find((el) => el.id === selectedId);
+    const selectedType = selectedElement ? selectedElement.type : null;
 
     return (
         <DesignContext.Provider
             value={{
                 elements,
                 selectedId,
+                selectedType,
                 backgroundColor,
                 activeTab,
                 selectedElement,
