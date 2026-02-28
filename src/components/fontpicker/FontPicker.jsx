@@ -45,11 +45,11 @@ const FontPicker = ({ selectedFont, onSelectFont }) => {
     <div className="relative" ref={pickerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        style={{ fontFamily: selectedFont?.family || 'Inter' }}
+        style={{ fontFamily: selectedFont?.family || 'inherit' }}
         className="px-3 py-1.5 bg-white border border-gray-200 rounded text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 min-w-36"
         title="Font Family"
       >
-        <span className="truncate text-xs">{selectedFont?.name || 'Inter'}</span>
+        <span className="truncate text-xs">{selectedFont?.name || 'Select Font'}</span>
         <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 

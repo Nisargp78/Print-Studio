@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Stage, Layer, Rect } from 'react-konva';
 import { useDesign } from '../context/useDesignContext';
 import ShapeNode from './ShapeNode';
@@ -16,6 +16,29 @@ const CanvasArea = ({ stageRef }) => {
         setActiveTab,
         isCanvasLocked,
     } = useDesign();
+
+    const prevElementsLengthRef = useRef(elements.length);
+
+    // Auto-select first text node when template loads
+    useEffect(() => {
+        if (isCanvasLocked) return;
+        
+        // Detect when new elements are added (template load or batch add)
+        const elementsAdded = elements.length > prevElementsLengthRef.current;
+        prevElementsLengthRef.current = elements.length;
+
+        if (elementsAdded && !selectedId) {
+            // Find first text element
+            const firstTextNode = elements.find(el => el.type === 'text');
+            if (firstTextNode) {
+                // Small delay to ensure render is complete
+                setTimeout(() => {
+                    setSelectedId(firstTextNode.id);
+                    setActiveTab('quick_edit');
+                }, 50);
+            }
+        }
+    }, [elements, selectedId, setSelectedId, setActiveTab, isCanvasLocked]);
 
     // Handle keyboard events for deleting elements
     useEffect(() => {
@@ -88,7 +111,7 @@ const CanvasArea = ({ stageRef }) => {
                                         onSelect={() => {
                                             if (isCanvasLocked) return;
                                             setSelectedId(el.id);
-                                            setActiveTab('quick_edit');
+                                            setActiveTab(el.type === 'image' ? 'upload' : 'quick_edit');
                                         }}
                                         onChange={(newProps) => updateElement(el.id, newProps)}
                                         canvasLocked={isCanvasLocked}

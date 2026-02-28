@@ -1,40 +1,153 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Droplet, ChevronDown } from 'lucide-react';
 import { useDesign } from '../../context/useDesignContext';
 import FontPicker from '../fontpicker/FontPicker';
 import FONTS from '../../data/fonts';
 
-const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64];
+const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 44, 48, 56, 64, 72, 80, 96, 120];
+
+const SYSTEM_FONTS = new Set([
+  'arial',
+  'arial black',
+  'inter',
+  'helvetica',
+  'helvetica neue',
+  'verdana',
+  'tahoma',
+  'trebuchet ms',
+  'lucida grande',
+  'century gothic',
+  'segoe ui',
+  'candara',
+  'calibri',
+  'franklin gothic medium',
+  'haettenschweiler',
+  'ms gothic',
+  'times new roman',
+  'georgia',
+  'garamond',
+  'palatino',
+  'baskerville',
+  'cambria',
+  'constantia',
+  'rockwell',
+  'bookman old style',
+  'comic sans ms',
+  'brush script mt',
+  'lucida handwriting',
+  'apple chancery',
+  'bradley hand',
+  'impact',
+  'copperplate',
+  'papyrus',
+  'luminari',
+  'trattatello',
+  'courier new',
+  'courier',
+  'lucida console',
+  'monaco',
+  'consolas',
+  'menlo',
+  'sans-serif',
+  'serif',
+  'monospace',
+  'cursive',
+  'fantasy',
+  'script'
+]);
+
+const ensureGoogleFont = (familyValue) => {
+  const primary = (familyValue || '').split(',')[0].replace(/["']/g, '').trim();
+  if (!primary) return;
+  if (SYSTEM_FONTS.has(primary.toLowerCase())) return;
+
+  const id = `font-${primary.toLowerCase().replace(/\s+/g, '-')}`;
+  if (document.getElementById(id)) return;
+
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${primary.replace(/\s+/g, '+')}:wght@400;700&display=swap`;
+  document.head.appendChild(link);
+};
 
 const TextToolbar = () => {
   const { selectedElement, updateElement } = useDesign();
   const [isFontSizeOpen, setIsFontSizeOpen] = useState(false);
 
-  if (!selectedElement) return null;
+  if (!selectedElement || selectedElement.type !== 'text') return null;
 
   const fontSize = selectedElement.fontSize || 32;
-  const fontFamily = selectedElement.fontFamily || 'Inter, sans-serif';
+  const fontFamily = selectedElement.fontFamily || 'cursive';
   const fontWeight = selectedElement.fontWeight || 'normal';
   const fontStyle = selectedElement.fontStyle || 'normal';
   const textDecoration = selectedElement.textDecoration || '';
-  const textAlign = selectedElement.textAlign || 'left';
+  const align = selectedElement.align || 'left';
   const fill = selectedElement.fill || '#000000';
 
   const selectedFont = useMemo(() => {
-    return FONTS.find(f => f.family === fontFamily) || FONTS[0];
+    // Try exact match first
+    let font = FONTS.find(f => f.family === fontFamily);
+    // If no exact match, try partial match
+    if (!font) {
+      font = FONTS.find(f => 
+        fontFamily.toLowerCase().includes(f.name.toLowerCase()) ||
+        f.family.toLowerCase().includes(fontFamily.toLowerCase())
+      );
+    }
+    // Check for generic font families
+    if (!font) {
+      const lowerFamily = fontFamily.toLowerCase().trim();
+      if (lowerFamily === 'cursive' || lowerFamily.endsWith('cursive')) {
+        font = FONTS.find(f => f.family === 'cursive');
+      } else if (lowerFamily === 'fantasy' || lowerFamily.endsWith('fantasy')) {
+        font = FONTS.find(f => f.family === 'fantasy');
+      } else if (lowerFamily === 'monospace' || lowerFamily.endsWith('monospace')) {
+        font = FONTS.find(f => f.family === 'monospace');
+      } else if (lowerFamily === 'serif' || lowerFamily.endsWith('serif')) {
+        font = FONTS.find(f => f.family === 'serif');
+      } else if (lowerFamily === 'sans-serif' || lowerFamily.endsWith('sans-serif')) {
+        font = FONTS.find(f => f.family === 'sans-serif');
+      }
+    }
+    // If still no match, create a display font from the fontFamily string
+    if (!font) {
+      const displayName = fontFamily
+        .split(',')[0]
+        .replace(/['"]/g, '')
+        .trim()
+        .split('-')[0]
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      font = { name: displayName, family: fontFamily, category: 'custom' };
+    }
+    return font;
   }, [fontFamily]);
 
   const isBold = fontWeight === 'bold';
-  const isItalic = fontStyle.toLowerCase().includes('italic');
+  const isItalic = fontStyle === 'italic';
   const isUnderline = textDecoration.toLowerCase().includes('underline');
+
+  useEffect(() => {
+    ensureGoogleFont(fontFamily);
+  }, [fontFamily]);
 
   const handleUpdate = (props) => {
     updateElement(selectedElement.id, props);
   };
 
   const toggleBold = () => {
+    let newWeight = 'normal';
+    if (!isBold) {
+      // If not bold, make it bold
+      newWeight = 'bold';
+    } else {
+      // If already bold (any variant), set to normal
+      newWeight = 'normal';
+    }
     handleUpdate({
-      fontWeight: isBold ? 'normal' : 'bold',
+      fontWeight: newWeight,
     });
   };
 
@@ -51,11 +164,12 @@ const TextToolbar = () => {
     });
   };
 
-  const setTextAlign = (align) => {
-    handleUpdate({ textAlign: align });
+  const setTextAlign = (alignValue) => {
+    handleUpdate({ align: alignValue });
   };
 
   const handleFontSelect = (font) => {
+    ensureGoogleFont(font.family);
     handleUpdate({ fontFamily: font.family });
   };
 
@@ -145,7 +259,7 @@ const TextToolbar = () => {
         <button
           onClick={() => setTextAlign('left')}
           className={`w-8 h-8 rounded border flex items-center justify-center ${
-            textAlign === 'left'
+            align === 'left'
               ? 'bg-gray-800 border-gray-800 text-white'
               : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
           }`}
@@ -157,7 +271,7 @@ const TextToolbar = () => {
         <button
           onClick={() => setTextAlign('center')}
           className={`w-8 h-8 rounded border flex items-center justify-center ${
-            textAlign === 'center'
+            align === 'center'
               ? 'bg-gray-800 border-gray-800 text-white'
               : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
           }`}
@@ -169,7 +283,7 @@ const TextToolbar = () => {
         <button
           onClick={() => setTextAlign('right')}
           className={`w-8 h-8 rounded border flex items-center justify-center ${
-            textAlign === 'right'
+            align === 'right'
               ? 'bg-gray-800 border-gray-800 text-white'
               : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
           }`}

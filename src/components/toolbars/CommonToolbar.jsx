@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Unlock, Copy, Trash2, Layers, ChevronDown, ArrowUp, ArrowDown, MoveUp, MoveDown } from 'lucide-react';
+import { Lock, Unlock, Copy, Trash2, Layers, ChevronDown, ArrowUp, ArrowDown, MoveUp, MoveDown, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { useDesign } from '../../context/useDesignContext';
 
 /**
@@ -43,6 +43,41 @@ const CommonToolbar = () => {
     if (!isNaN(numValue)) {
       updateElement(selectedElement.id, { [axis]: numValue });
     }
+  };
+
+  const CANVAS_WIDTH = 800;
+  const CANVAS_HEIGHT = 600;
+
+  const alignLeft = () => {
+    handlePositionChange('x', 0);
+  };
+
+  const alignCenter = () => {
+    const elementWidth = selectedElement.width || 100;
+    const centerX = (CANVAS_WIDTH - elementWidth) / 2;
+    handlePositionChange('x', Math.round(centerX));
+  };
+
+  const alignRight = () => {
+    const elementWidth = selectedElement.width || 100;
+    const rightX = CANVAS_WIDTH - elementWidth;
+    handlePositionChange('x', Math.round(rightX));
+  };
+
+  const alignTop = () => {
+    handlePositionChange('y', 0);
+  };
+
+  const alignMiddle = () => {
+    const elementHeight = selectedElement.height || 100;
+    const middleY = (CANVAS_HEIGHT - elementHeight) / 2;
+    handlePositionChange('y', Math.round(middleY));
+  };
+
+  const alignBottom = () => {
+    const elementHeight = selectedElement.height || 100;
+    const bottomY = CANVAS_HEIGHT - elementHeight;
+    handlePositionChange('y', Math.round(bottomY));
   };
 
   // Layer management functions
@@ -107,6 +142,64 @@ const CommonToolbar = () => {
                   onChange={(e) => handlePositionChange('y', e.target.value)}
                   className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
                 />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-2 block">Quick Align - Horizontal</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={alignLeft}
+                    className="flex-1 px-2 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded text-xs flex items-center justify-center gap-1 transition"
+                    title="Align Left"
+                  >
+                    <AlignLeft size={14} />
+                    Left
+                  </button>
+                  <button
+                    onClick={alignCenter}
+                    className="flex-1 px-2 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded text-xs flex items-center justify-center gap-1 transition"
+                    title="Align Center"
+                  >
+                    <AlignCenter size={14} />
+                    Center
+                  </button>
+                  <button
+                    onClick={alignRight}
+                    className="flex-1 px-2 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded text-xs flex items-center justify-center gap-1 transition"
+                    title="Align Right"
+                  >
+                    <AlignRight size={14} />
+                    Right
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-2 block">Quick Align - Vertical</label>
+                <div className="flex gap-2 flex-col">
+                  <button
+                    onClick={alignTop}
+                    className="flex-1 px-2 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded text-xs flex items-center justify-center gap-1 transition"
+                    title="Align Top"
+                  >
+                    <ArrowUp size={14} />
+                    Top
+                  </button>
+                  <button
+                    onClick={alignMiddle}
+                    className="flex-1 px-2 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded text-xs flex items-center justify-center gap-1 transition"
+                    title="Align Middle"
+                  >
+                    <MoveUp size={14} />
+                    Middle
+                  </button>
+                  <button
+                    onClick={alignBottom}
+                    className="flex-1 px-2 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded text-xs flex items-center justify-center gap-1 transition"
+                    title="Align Bottom"
+                  >
+                    <ArrowDown size={14} />
+                    Bottom
+                  </button>
+                </div>
               </div>
             </div>
           </div>

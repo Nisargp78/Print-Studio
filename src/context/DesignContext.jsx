@@ -65,7 +65,12 @@ export const DesignProvider = ({ children }) => {
             typeDefaults = {
                 text: 'Double click to edit',
                 fontSize: 32,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Arial, sans-serif',
+                fontWeight: 'normal',
+                fontStyle: 'normal',
+                textDecoration: '',
+                align: 'left',
+                opacity: 1,
             };
         }
 
