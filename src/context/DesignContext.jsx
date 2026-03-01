@@ -13,7 +13,7 @@ export const DesignProvider = ({ children }) => {
     const [selectedIds, setSelectedIdsState] = useState([]);
     const [backgroundColor, setBackgroundColor] = useState('#ffffff');
     const [backgroundImage, setBackgroundImage] = useState(null);
-    const [activeTab, setActiveTab] = useState('elements');
+    const [activeTab, setActiveTab] = useState(null);
     const [isCanvasLocked, setIsCanvasLocked] = useState(false);
     const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600, name: 'Default (800x600)' });
     const [zoom, setZoom] = useState(1);
