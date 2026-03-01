@@ -10,6 +10,38 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
     const dragStartStateRef = useRef(null);
     const isBeingDraggedRef = useRef(false);
 
+    const getTextRequiredSize = (fontSizeOverride) => {
+        const fontSize = fontSizeOverride || shapeProps.fontSize || 32;
+        const fontWeightRaw = shapeProps.fontWeight || 'normal';
+        const normalizedFontWeight = ['900', '800', '700', '600', 'black', 'extra-bold', 'bold', 'semi-bold'].includes(String(fontWeightRaw).toLowerCase())
+            ? 'bold'
+            : 'normal';
+        const normalizedFontStyle = String(shapeProps.fontStyle || 'normal').toLowerCase().includes('italic')
+            ? 'italic'
+            : 'normal';
+        const lines = String(shapeProps.text ?? '').split('\n');
+        const widestLine = lines.reduce((maxWidth, line) => {
+            const measured = measureTextCanvas(line || ' ', {
+                fontSize,
+                fontFamily: shapeProps.fontFamily,
+                fontWeight: normalizedFontWeight,
+                fontStyle: normalizedFontStyle,
+            });
+            return Math.max(maxWidth, Math.ceil(measured?.width || 0));
+        }, 0);
+
+        const hasUnderline =
+            typeof shapeProps.textDecoration === 'string' &&
+            shapeProps.textDecoration.toLowerCase().includes('underline');
+        const padding = typeof shapeProps.padding === 'number' ? shapeProps.padding : (hasUnderline ? 4 : 0);
+        const lineHeight = parseFloat(shapeProps.lineHeight) || 1.2;
+
+        return {
+            requiredWidth: Math.max(fontSize, widestLine + padding * 2 + 4),
+            requiredHeight: Math.max(5, fontSize * lineHeight * Math.max(1, lines.length) + padding * 2 + (hasUnderline ? 2 : 0)),
+        };
+    };
+
     const startInlineTextEdit = () => {
         if (canvasLocked || shapeProps.locked || shapeProps.type !== 'text') return;
 
@@ -334,6 +366,32 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         // Don't update state during transform - just let Konva handle the visual changes
         // This prevents creating multiple history entries
         if (canvasLocked || shapeProps.locked) return;
+
+        if (shapeProps.type === 'text' && shapeRef.current) {
+            const node = shapeRef.current;
+            const activeAnchor = trRef.current?.getActiveAnchor?.();
+            const scaleX = node.scaleX();
+            const scaleY = node.scaleY();
+
+            const isHorizontalOnly = activeAnchor === 'middle-left' || activeAnchor === 'middle-right';
+            const isVerticalOnly = activeAnchor === 'top-center' || activeAnchor === 'bottom-center';
+            const { requiredWidth, requiredHeight } = getTextRequiredSize(node.fontSize() || shapeProps.fontSize || 32);
+
+            // For side handles, apply live box resize while keeping font size fixed.
+            if (isHorizontalOnly) {
+                node.width(Math.max(node.width() * scaleX, node.fontSize() || 20));
+                node.height(shapeProps.height ?? requiredHeight);
+                node.scaleX(1);
+                node.scaleY(1);
+            }
+
+            if (isVerticalOnly) {
+                node.width(Math.max(shapeProps.width ?? requiredWidth, requiredWidth));
+                node.height(requiredHeight);
+                node.scaleX(1);
+                node.scaleY(1);
+            }
+        }
     };
 
     const handleTransformEnd = () => {
@@ -376,12 +434,50 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
                 rotation: node.rotation()
             });
         } else if (shapeProps.type === 'text') {
+            const activeAnchor = trRef.current?.getActiveAnchor?.();
+            const isHorizontalOnly = activeAnchor === 'middle-left' || activeAnchor === 'middle-right';
+            const isVerticalOnly = activeAnchor === 'top-center' || activeAnchor === 'bottom-center';
+            const isCornerAnchor = activeAnchor === 'top-left' || activeAnchor === 'top-right' || activeAnchor === 'bottom-right' || activeAnchor === 'bottom-left';
+
+            const xScaled = Math.abs(scaleX - 1) > 0.001;
+            const yScaled = Math.abs(scaleY - 1) > 0.001;
+            const inferredCorner = !isHorizontalOnly && !isVerticalOnly && (isCornerAnchor || (xScaled && yScaled));
+            const { requiredWidth: contentWidthAtCurrentSize, requiredHeight: contentHeightAtCurrentSize } = getTextRequiredSize(shapeProps.fontSize || node.fontSize() || 32);
+
+            const currentWidth = Math.max(node.width(), node.fontSize() || 20);
+            const currentHeight = Math.max(5, node.height());
+
+            if (inferredCorner) {
+                const baseFontSize = shapeProps.fontSize || node.fontSize() || 32;
+                const rawUniformScale = (Math.abs(scaleX) + Math.abs(scaleY)) / 2;
+                const dampedFontScale = 1 + (rawUniformScale - 1) * 0.35;
+                const nextFontSize = Math.max(4, baseFontSize * dampedFontScale);
+                const baseWidth = shapeProps.width ?? node.width();
+                const baseHeight = shapeProps.height ?? node.height();
+                const { requiredWidth, requiredHeight } = getTextRequiredSize(nextFontSize);
+
+                onChange({
+                    ...shapeProps,
+                    x: node.x(),
+                    y: node.y(),
+                    fontSize: nextFontSize,
+                    width: Math.max(baseWidth * dampedFontScale, requiredWidth),
+                    height: Math.max(baseHeight * dampedFontScale, requiredHeight),
+                    rotation: node.rotation()
+                });
+                return;
+            }
+
             onChange({
                 ...shapeProps,
                 x: node.x(),
                 y: node.y(),
-                width: Math.max(node.width() * scaleX, node.fontSize() || 20),
-                height: node.height() * scaleY,
+                width: isVerticalOnly
+                    ? Math.max(shapeProps.width ?? currentWidth, contentWidthAtCurrentSize)
+                    : Math.max(currentWidth, contentWidthAtCurrentSize),
+                height: isHorizontalOnly
+                    ? Math.max(shapeProps.height ?? currentHeight, contentHeightAtCurrentSize)
+                    : contentHeightAtCurrentSize,
                 rotation: node.rotation()
             });
         } else {
@@ -489,7 +585,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
             {isSelected && !shapeProps.locked && (
                 <Transformer
                     ref={trRef}
-                    keepRatio={shapeProps.type === 'image' || shapeProps.type.startsWith('icon-')}
+                    keepRatio={shapeProps.type === 'image' || shapeProps.type.startsWith('icon-') || shapeProps.type === 'text'}
                     boundBoxFunc={(oldBox, newBox) => {
                         if (newBox.width < 5 || newBox.height < 5) return oldBox;
                         return newBox;
