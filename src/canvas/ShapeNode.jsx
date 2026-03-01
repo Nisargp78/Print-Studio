@@ -23,17 +23,18 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         const stageBox = stage.container().getBoundingClientRect();
         const textPosition = textNode.absolutePosition();
 
-        // Create wrapper for textarea with handles
+        // Create wrapper for single-line input (prevents unwanted newlines on double-click edit)
         const wrapper = document.createElement('div');
-        const textarea = document.createElement('textarea');
-        wrapper.appendChild(textarea);
+        const input = document.createElement('input');
+        input.type = 'text';
+        wrapper.appendChild(input);
         document.body.appendChild(wrapper);
 
         const fontStyleValue = textNode.fontStyle() || 'normal';
         const isBold = fontStyleValue.includes('bold');
         const isItalic = fontStyleValue.includes('italic');
 
-        textarea.value = textNode.text();
+        input.value = textNode.text();
         const nodePadding = typeof textNode.padding() === 'number' ? textNode.padding() : 0;
         const nodeWidth = Math.max(40, textNode.width());
         const nodeHeight = Math.max(textNode.fontSize(), textNode.height());
@@ -124,7 +125,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
                 wrapper.style.top = `${newTop}px`;
                 wrapper.style.left = `${newLeft}px`;
                 
-                resizeTextarea();
+                resizeInput();
             };
             
             const handleMouseUp = () => {
@@ -146,26 +147,23 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
             wrapper.appendChild(handle);
         });
         
-        // Style textarea
-        textarea.style.position = 'relative';
-        textarea.style.width = '100%';
-        textarea.style.height = 'auto';
-        textarea.style.fontSize = `${textNode.fontSize()}px`;
-        textarea.style.fontFamily = textNode.fontFamily();
-        textarea.style.fontWeight = isBold ? 'bold' : 'normal';
-        textarea.style.fontStyle = isItalic ? 'italic' : 'normal';
-        textarea.style.lineHeight = `${textNode.lineHeight()}`;
-        textarea.style.textAlign = textNode.align();
-        textarea.style.color = textNode.fill();
-        textarea.style.border = 'none';
-        textarea.style.padding = `${nodePadding}px ${nodePadding}px ${bottomPadding}px ${nodePadding}px`;
-        textarea.style.margin = '0';
-        textarea.style.boxSizing = 'border-box';
-        textarea.style.overflow = 'hidden';
-        textarea.style.background = 'transparent';
-        textarea.style.outline = 'none';
-        textarea.style.resize = 'none';
-        textarea.style.whiteSpace = 'nowrap';
+        // Style input (single-line, no newlines)
+        input.style.position = 'relative';
+        input.style.width = '100%';
+        input.style.fontSize = `${textNode.fontSize()}px`;
+        input.style.fontFamily = textNode.fontFamily();
+        input.style.fontWeight = isBold ? 'bold' : 'normal';
+        input.style.fontStyle = isItalic ? 'italic' : 'normal';
+        input.style.lineHeight = `${textNode.lineHeight()}`;
+        input.style.textAlign = textNode.align();
+        input.style.color = textNode.fill();
+        input.style.border = 'none';
+        input.style.padding = `${nodePadding}px ${nodePadding}px ${bottomPadding}px ${nodePadding}px`;
+        input.style.margin = '0';
+        input.style.boxSizing = 'border-box';
+        input.style.overflow = 'hidden';
+        input.style.background = 'transparent';
+        input.style.outline = 'none';
 
         const rotation = textNode.rotation();
         let transform = '';
@@ -179,10 +177,10 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         if (trRef.current) trRef.current.hide();
         textNode.getLayer()?.batchDraw();
 
-        textarea.focus();
-        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
 
-        const resizeTextarea = () => {
+        const resizeInput = () => {
             // Create a temporary element to measure text width with all proper styling
             const temp = document.createElement('div');
             temp.style.position = 'absolute';
@@ -199,40 +197,40 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
             temp.style.display = 'inline-block';
             
             // Ensure we measure actual text content
-            const textToMeasure = textarea.value || 'a';
+            const textToMeasure = input.value || 'a';
             temp.textContent = textToMeasure;
             
             document.body.appendChild(temp);
             // Use getBoundingClientRect for more accurate measurement including spaces
-            const contentWidth = temp.getBoundingClientRect().width;
+            // Add buffer for leading/trailing spaces and DOM vs canvas rendering differences
+            const MEASURE_BUFFER = 20;
+            const contentWidth = temp.getBoundingClientRect().width + MEASURE_BUFFER;
             document.body.removeChild(temp);
             
-            // Measure height with textarea
-            textarea.style.width = 'auto';
-            textarea.style.height = 'auto';
-            const scrollHeight = textarea.scrollHeight;
+            // Single-line height: fontSize * lineHeight + padding (input cannot have newlines)
+            const lineHeightVal = parseFloat(textNode.lineHeight()) || 1.2;
+            const singleLineHeight = textNode.fontSize() * lineHeightVal;
+            const requiredHeight = Math.max(nodeHeight + nodePadding + bottomPadding, singleLineHeight + nodePadding + bottomPadding);
             
             // Calculate new dimensions with minimal padding
             const requiredWidth = Math.max(nodeWidth, Math.ceil(contentWidth) + nodePadding * 2);
-            const requiredHeight = Math.max(nodeHeight + nodePadding + bottomPadding, scrollHeight + nodePadding + bottomPadding);
             
             wrapper.style.width = `${requiredWidth}px`;
             wrapper.style.height = `${requiredHeight}px`;
-            textarea.style.width = `${requiredWidth - nodePadding * 2}px`;
-            textarea.style.height = `${scrollHeight}px`;
+            input.style.width = `${requiredWidth - nodePadding * 2}px`;
             
             // Store dimensions for later use
             wrapper.dataset.contentWidth = contentWidth;
-            wrapper.dataset.scrollHeight = scrollHeight;
+            wrapper.dataset.scrollHeight = singleLineHeight;
         };
 
-        resizeTextarea();
-        textarea.addEventListener('input', resizeTextarea);
+        resizeInput();
+        input.addEventListener('input', resizeInput);
 
-        const removeTextarea = (save) => {
-            textarea.removeEventListener('input', resizeTextarea);
+        const removeInput = (save) => {
+            input.removeEventListener('input', resizeInput);
             window.removeEventListener('click', handleOutsideClick);
-            textarea.removeEventListener('keydown', handleKeyDown);
+            input.removeEventListener('keydown', handleKeyDown);
 
             if (save) {
                 // Get stored dimensions from last measurement
@@ -244,7 +242,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
                 
                 onChange({
                     ...shapeProps,
-                    text: textarea.value,
+                    text: input.value,
                     width: finalWidth,
                     height: finalHeight,
                 });
@@ -265,21 +263,21 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         const handleKeyDown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                removeTextarea(true);
+                removeInput(true);
             }
             if (e.key === 'Escape') {
                 e.preventDefault();
-                removeTextarea(false);
+                removeInput(false);
             }
         };
 
         const handleOutsideClick = (e) => {
             if (!wrapper.contains(e.target)) {
-                removeTextarea(true);
+                removeInput(true);
             }
         };
 
-        textarea.addEventListener('keydown', handleKeyDown);
+        input.addEventListener('keydown', handleKeyDown);
         setTimeout(() => window.addEventListener('click', handleOutsideClick));
     };
 
@@ -484,6 +482,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
             fontStyle: combinedFontStyle,
             align: shapeProps.align || 'left',
             padding,
+            wrap: 'none',
             onDblClick: startInlineTextEdit,
             onDblTap: startInlineTextEdit,
         };
