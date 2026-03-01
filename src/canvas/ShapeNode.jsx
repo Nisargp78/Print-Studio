@@ -37,16 +37,19 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         const nodePadding = typeof textNode.padding() === 'number' ? textNode.padding() : 0;
         const nodeWidth = Math.max(40, textNode.width());
         const nodeHeight = Math.max(textNode.fontSize(), textNode.height());
+        // Add bottom padding for underline and spacing
+        const bottomPadding = nodePadding + 8;
         
         // Style wrapper
         wrapper.style.position = 'absolute';
         wrapper.style.top = `${stageBox.top + textPosition.y}px`;
         wrapper.style.left = `${stageBox.left + textPosition.x}px`;
         wrapper.style.width = `${nodeWidth}px`;
-        wrapper.style.height = `${nodeHeight + nodePadding * 2}px`;
+        wrapper.style.height = `${nodeHeight + nodePadding + bottomPadding}px`;
         wrapper.style.zIndex = '1000';
         wrapper.style.border = '1px solid #3b82f6';
         wrapper.style.boxSizing = 'border-box';
+        wrapper.style.overflow = 'visible';
         
         // Add corner and edge handles with resize functionality
         const handlePositions = [
@@ -147,7 +150,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         // Style textarea
         textarea.style.position = 'relative';
         textarea.style.width = '100%';
-        textarea.style.height = '100%';
+        textarea.style.height = 'auto';
         textarea.style.fontSize = `${textNode.fontSize()}px`;
         textarea.style.fontFamily = textNode.fontFamily();
         textarea.style.fontWeight = isBold ? 'bold' : 'normal';
@@ -156,7 +159,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         textarea.style.textAlign = textNode.align();
         textarea.style.color = textNode.fill();
         textarea.style.border = 'none';
-        textarea.style.padding = `${nodePadding}px`;
+        textarea.style.padding = `${nodePadding}px ${nodePadding}px ${bottomPadding}px ${nodePadding}px`;
         textarea.style.margin = '0';
         textarea.style.boxSizing = 'border-box';
         textarea.style.overflow = 'hidden';
@@ -182,14 +185,23 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
         const resizeTextarea = () => {
-            // Update wrapper height based on textarea content
+            // Reset dimensions to measure actual content
+            textarea.style.height = 'auto';
+            
+            // Force reflow to get accurate scrollHeight
             const scrollHeight = textarea.scrollHeight;
-            const requiredHeight = Math.max(nodeHeight + nodePadding * 2, scrollHeight + nodePadding * 2);
+            
+            // Only adjust height, keep width fixed
+            const requiredHeight = Math.max(nodeHeight + nodePadding + bottomPadding, scrollHeight + nodePadding + bottomPadding);
+            
             wrapper.style.height = `${requiredHeight}px`;
             textarea.style.height = `${scrollHeight}px`;
         };
 
-        resizeTextarea();
+        // Ensure first resize happens after DOM is ready
+        setTimeout(() => {
+            resizeTextarea();
+        }, 0);
         textarea.addEventListener('input', resizeTextarea);
 
         const removeTextarea = (save) => {
@@ -283,9 +295,13 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
     };
 
     const handleDragMove = (e) => {
-        // Don't update state during drag - just let Konva handle the visual movement
-        // This prevents creating multiple history entries
+        // Update properties in real time during drag without creating history entries
         if (canvasLocked || shapeProps.locked) return;
+        onChangeWithoutHistory({
+            ...shapeProps,
+            x: e.target.x(),
+            y: e.target.y(),
+        });
     };
 
     const handleTransform = () => {
