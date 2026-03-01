@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bold, ChevronDown, Copy, Italic, Lock, Trash2, Underline, Unlock, Image as ImageIcon, Layers, MoveUp, MoveDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronDown, Copy, Lock, Trash2, Unlock, Image as ImageIcon, Layers, MoveUp, MoveDown, ArrowUp, ArrowDown, Droplets, FlipHorizontal, FlipVertical, Crop, Shuffle } from 'lucide-react';
 import { useDesign } from '../context/useDesignContext';
+import ShapeToolbar from './toolbars/ShapeToolbar';
+import TextToolbar from './toolbars/TextToolbar';
+import CropModal from './CropModal';
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
@@ -15,10 +18,13 @@ const FormatBar = () => {
     isCanvasLocked,
     toggleCanvasLock,
     setElements,
+    canvasSize,
   } = useDesign();
   const [isTransparencyOpen, setIsTransparencyOpen] = useState(false);
   const [isPositionOpen, setIsPositionOpen] = useState(false);
   const [isLayersOpen, setIsLayersOpen] = useState(false);
+  const [isCropOpen, setIsCropOpen] = useState(false);
+  const [isFlipOpen, setIsFlipOpen] = useState(false);
 
   const hasSelection = !!selectedElement;
 
@@ -33,6 +39,7 @@ const FormatBar = () => {
       setIsTransparencyOpen(false);
       setIsPositionOpen(false);
       setIsLayersOpen(false);
+      setIsCropOpen(false);
     }
   }, [hasSelection]);
 
@@ -98,55 +105,10 @@ const FormatBar = () => {
     updateElement(selectedElement.id, { opacity: 1 - t / 100 });
   };
 
-  // Text-specific properties
+  // Color property for images
   const currentFill = (selectedElement && typeof selectedElement.fill === 'string'
     ? selectedElement.fill
     : '#0f172a');
-
-  const fontStyleCurrent = (selectedElement && selectedElement.fontStyle) || 'normal';
-  const isBoldText =
-    (selectedElement && selectedElement.fontWeight === 'bold') ||
-    fontStyleCurrent.toLowerCase().includes('bold');
-  const isItalicText = fontStyleCurrent.toLowerCase().includes('italic');
-  const isUnderlineText =
-    selectedElement && typeof selectedElement.textDecoration === 'string'
-      ? selectedElement.textDecoration.toLowerCase().includes('underline')
-      : false;
-
-  const toggleBold = () => {
-    if (!isText || !selectedElement) return;
-    const nextBold = !isBoldText;
-    const nextItalic = isItalicText;
-    const parts = [];
-    if (nextBold) parts.push('bold');
-    if (nextItalic) parts.push('italic');
-    const nextStyle = parts.length ? parts.join(' ') : 'normal';
-    updateElement(selectedElement.id, {
-      fontStyle: nextStyle,
-      fontWeight: nextBold ? 'bold' : 'normal',
-    });
-  };
-
-  const toggleItalic = () => {
-    if (!isText || !selectedElement) return;
-    const nextItalic = !isItalicText;
-    const nextBold = isBoldText;
-    const parts = [];
-    if (nextBold) parts.push('bold');
-    if (nextItalic) parts.push('italic');
-    const nextStyle = parts.length ? parts.join(' ') : 'normal';
-    updateElement(selectedElement.id, {
-      fontStyle: nextStyle,
-    });
-  };
-
-  const toggleUnderline = () => {
-    if (!isText || !selectedElement) return;
-    const nextUnderline = !isUnderlineText;
-    updateElement(selectedElement.id, {
-      textDecoration: nextUnderline ? 'underline' : '',
-    });
-  };
 
   const handleFillColorChange = (value) => {
     if (!selectedElement) return;
@@ -160,97 +122,206 @@ const FormatBar = () => {
     updateElement(selectedElement.id, { [axis]: numValue });
   };
 
-  return (
-    <div className="w-full flex items-center gap-2 bg-white/90 backdrop-blur border border-gray-200 shadow-sm px-3 py-2">
-      {/* Color controls - always show but disabled when nothing selected */}
-      <div className={[
-        'flex items-center gap-1 mr-2 px-2 py-1 rounded',
-        !hasSelection && 'opacity-40 cursor-not-allowed'
-      ].join(' ')}>
-        <input
-          type="color"
-          value={currentFill}
-          onChange={(e) => handleFillColorChange(e.target.value)}
-          disabled={!hasSelection}
-          className={[
-            'w-8 h-8 rounded border border-gray-200',
-            hasSelection ? 'cursor-pointer' : 'cursor-not-allowed'
-          ].join(' ')}
-          title={isText ? 'Text color' : 'Fill color'}
-        />
-      </div>
+  // Canvas alignment functions (for positioning elements on canvas)
+  const alignLeft = () => {
+    if (!selectedElement) return;
+    updateElement(selectedElement.id, { x: 0 });
+  };
 
+  const alignCenter = () => {
+    if (!selectedElement || !canvasSize) return;
+    const elementWidth = selectedElement.width || 100;
+    const newX = (canvasSize.width - elementWidth) / 2;
+    updateElement(selectedElement.id, { x: newX });
+  };
+
+  const alignRight = () => {
+    if (!selectedElement || !canvasSize) return;
+    const elementWidth = selectedElement.width || 100;
+    const newX = canvasSize.width - elementWidth;
+    updateElement(selectedElement.id, { x: newX });
+  };
+
+  const alignTop = () => {
+    if (!selectedElement) return;
+    updateElement(selectedElement.id, { y: 0 });
+  };
+
+  const alignMiddle = () => {
+    if (!selectedElement || !canvasSize) return;
+    const elementHeight = selectedElement.height || 100;
+    const newY = (canvasSize.height - elementHeight) / 2;
+    updateElement(selectedElement.id, { y: newY });
+  };
+
+  const alignBottom = () => {
+    if (!selectedElement || !canvasSize) return;
+    const elementHeight = selectedElement.height || 100;
+    const newY = canvasSize.height - elementHeight;
+    updateElement(selectedElement.id, { y: newY });
+  };
+
+  return (
+    <div className="w-full relative overflow-visible bg-white/90 backdrop-blur border border-gray-200 shadow-sm px-2 py-2">
+      <div className="relative w-full flex flex-nowrap items-center gap-1">
       {/* Text formatting controls - show only for text */}
       {isText && (
-        <div className="flex items-center gap-1 mr-4">
-          <button
-            type="button"
-            onClick={toggleBold}
+        <>
+          <TextToolbar />
+          <div className="w-px h-6 bg-gray-200 mx-0.5" />
+        </>
+      )}
+
+      {/* Color controls - show only when nothing selected (no color for images) */}
+      {(!hasSelection && !isText && !isShape && !isImage) && (
+        <div className={[
+          'flex items-center gap-1 mr-2 px-2 py-1 rounded',
+          !hasSelection && 'opacity-40 cursor-not-allowed'
+        ].join(' ')}>
+          <input
+            type="color"
+            value={currentFill}
+            onChange={(e) => handleFillColorChange(e.target.value)}
+            disabled={!hasSelection}
             className={[
-              'w-8 h-8 rounded border text-xs flex items-center justify-center font-semibold',
-              isBoldText
-                ? 'bg-gray-800 text-white border-gray-800'
-                : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50',
+              'w-8 h-8 rounded border border-gray-200',
+              hasSelection ? 'cursor-pointer' : 'cursor-not-allowed'
             ].join(' ')}
-            title="Bold"
-          >
-            <Bold size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={toggleItalic}
-            className={[
-              'w-8 h-8 rounded border text-xs flex items-center justify-center',
-              isItalicText
-                ? 'bg-gray-800 text-white border-gray-800'
-                : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50',
-            ].join(' ')}
-            title="Italic"
-          >
-            <Italic size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={toggleUnderline}
-            className={[
-              'w-8 h-8 rounded border text-xs flex items-center justify-center',
-              isUnderlineText
-                ? 'bg-gray-800 text-white border-gray-800'
-                : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50',
-            ].join(' ')}
-            title="Underline"
-          >
-            <Underline size={14} />
-          </button>
+            title={'Fill color'}
+          />
         </div>
       )}
 
-      {/* Replace Image button - show only for images */}
+      {/* Shape controls - show only for shapes */}
+      {isShape && (
+        <>
+          <ShapeToolbar />
+          <div className="w-px h-6 bg-gray-200 mx-0.5" />
+        </>
+      )}
+
+      {/* Image controls - show only for images */}
       {isImage && (
-        <button
-          type="button"
-          className="text-sm px-3 py-1.5 rounded border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2"
-          onClick={() => {
-            // Trigger file input for image replacement
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.onchange = (e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                const reader = new FileReader();
-                reader.onload = () => {
-                  updateElement(selectedElement.id, { src: reader.result });
-                };
-                reader.readAsDataURL(file);
-              }
-            };
-            input.click();
-          }}
-        >
-          <ImageIcon size={16} />
-          Replace Image
-        </button>
+        <>
+          <button
+            type="button"
+            className="text-sm px-3 py-1.5 rounded border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2"
+            onClick={() => {
+              // Trigger file input for image replacement
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.onchange = (e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    updateElement(selectedElement.id, { src: reader.result });
+                  };
+                  reader.readAsDataURL(file);
+                }
+              };
+              input.click();
+            }}
+            title="Replace Image"
+          >
+            <ImageIcon size={16} />
+            Replace Image
+          </button>
+
+          {/* Flip Dropdown */}
+          <div className="relative format-dropdown">
+            <button
+              type="button"
+              className="text-sm px-3 py-1.5 rounded border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2"
+              onClick={() => setIsFlipOpen((v) => !v)}
+              title="Flip Image"
+            >
+              <Shuffle size={16} />
+              Flip
+              <ChevronDown size={14} />
+            </button>
+            {isFlipOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white border border-gray-300 rounded shadow-lg z-50 min-w-45">
+                <button
+                  type="button"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  onClick={() => {
+                    const img = new Image();
+                    img.onload = () => {
+                      const canvas = document.createElement('canvas');
+                      canvas.width = img.width;
+                      canvas.height = img.height;
+                      const ctx = canvas.getContext('2d');
+                      
+                      // Flip horizontally
+                      ctx.translate(canvas.width, 0);
+                      ctx.scale(-1, 1);
+                      ctx.drawImage(img, 0, 0);
+                      
+                      const flippedSrc = canvas.toDataURL('image/png');
+                      updateElement(selectedElement.id, { src: flippedSrc });
+                    };
+                    img.src = selectedElement.src;
+                    setIsFlipOpen(false);
+                  }}
+                >
+                  <FlipHorizontal size={16} />
+                  Flip Horizontal
+                </button>
+                <button
+                  type="button"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  onClick={() => {
+                    const img = new Image();
+                    img.onload = () => {
+                      const canvas = document.createElement('canvas');
+                      canvas.width = img.width;
+                      canvas.height = img.height;
+                      const ctx = canvas.getContext('2d');
+                      
+                      // Flip vertically
+                      ctx.translate(0, canvas.height);
+                      ctx.scale(1, -1);
+                      ctx.drawImage(img, 0, 0);
+                      
+                      const flippedSrc = canvas.toDataURL('image/png');
+                      updateElement(selectedElement.id, { src: flippedSrc });
+                    };
+                    img.src = selectedElement.src;
+                    setIsFlipOpen(false);
+                  }}
+                >
+                  <FlipVertical size={16} />
+                  Flip Vertical
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Crop Button */}
+          <button
+            type="button"
+            className="text-sm px-3 py-1.5 rounded border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2"
+            onClick={() => setIsCropOpen(true)}
+            title="Crop Image"
+          >
+            <Crop size={16} />
+            Crop
+          </button>
+
+          {/* Crop Modal */}
+          {isCropOpen && (
+            <CropModal 
+              element={selectedElement} 
+              onClose={() => setIsCropOpen(false)}
+              onCrop={(croppedData) => {
+                updateElement(selectedElement.id, croppedData);
+                setIsCropOpen(false);
+              }}
+            />
+          )}
+        </>
       )}
 
       {/* Position control - always show but disabled when nothing selected */}
@@ -272,7 +343,7 @@ const FormatBar = () => {
         </button>
 
         {isPositionOpen && hasSelection && (
-          <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-3 w-64 z-50">
+          <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-3 w-64 z-99999">
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-medium text-gray-700 mb-1 block">X Position</label>
@@ -291,6 +362,62 @@ const FormatBar = () => {
                   onChange={(e) => handlePositionChange('y', e.target.value)}
                   className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
                 />
+              </div>
+
+              {/* Horizontal Alignment */}
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">Horizontal Align</label>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={alignLeft}
+                    className="flex-1 px-2 py-1.5 rounded border border-gray-200 hover:bg-gray-50 text-xs font-medium text-gray-700"
+                    title="Align Left"
+                  >
+                    Left
+                  </button>
+                  <button
+                    onClick={alignCenter}
+                    className="flex-1 px-2 py-1.5 rounded border border-gray-200 hover:bg-gray-50 text-xs font-medium text-gray-700"
+                    title="Align Center"
+                  >
+                    Center
+                  </button>
+                  <button
+                    onClick={alignRight}
+                    className="flex-1 px-2 py-1.5 rounded border border-gray-200 hover:bg-gray-50 text-xs font-medium text-gray-700"
+                    title="Align Right"
+                  >
+                    Right
+                  </button>
+                </div>
+              </div>
+
+              {/* Vertical Alignment */}
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">Vertical Align</label>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={alignTop}
+                    className="flex-1 px-2 py-1.5 rounded border border-gray-200 hover:bg-gray-50 text-xs font-medium text-gray-700"
+                    title="Align Top"
+                  >
+                    Top
+                  </button>
+                  <button
+                    onClick={alignMiddle}
+                    className="flex-1 px-2 py-1.5 rounded border border-gray-200 hover:bg-gray-50 text-xs font-medium text-gray-700"
+                    title="Align Middle"
+                  >
+                    Middle
+                  </button>
+                  <button
+                    onClick={alignBottom}
+                    className="flex-1 px-2 py-1.5 rounded border border-gray-200 hover:bg-gray-50 text-xs font-medium text-gray-700"
+                    title="Align Bottom"
+                  >
+                    Bottom
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -316,7 +443,7 @@ const FormatBar = () => {
         </button>
 
         {isLayersOpen && hasSelection && (
-          <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-2 w-48 z-50">
+          <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-2 w-48 z-99999">
             <button
               onClick={bringToFront}
               className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded flex items-center gap-2"
@@ -349,7 +476,7 @@ const FormatBar = () => {
         )}
       </div>
 
-      <div className="w-px h-6 bg-gray-200 mx-1" />
+      <div className="w-px h-6 bg-gray-200 mx-0.5" />
 
       {/* Transparency */}
       <div className="relative format-dropdown">
@@ -363,13 +490,13 @@ const FormatBar = () => {
           ].join(' ')}
           title="Transparency"
         >
-          Transparency
+          <Droplets size={16} />
           <span className="text-gray-500">{transparency}%</span>
           <ChevronDown size={16} className="text-gray-500" />
         </button>
 
         {isTransparencyOpen && hasSelection && (
-          <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-3 w-64 z-50">
+          <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-3 w-64 z-99999">
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm font-medium text-gray-800">Transparency</div>
               <div className="text-sm text-gray-600">{transparency}%</div>
@@ -390,7 +517,7 @@ const FormatBar = () => {
         )}
       </div>
 
-      <div className="w-px h-6 bg-gray-200 mx-1" />
+      <div className="w-px h-6 bg-gray-200 mx-0.5" />
 
       {/* Lock */}
       <button
@@ -441,6 +568,7 @@ const FormatBar = () => {
       >
         <Trash2 size={18} className={!hasSelection || isLocked ? 'text-red-200' : 'text-red-600'} />
       </button>
+      </div>
     </div>
   );
 };

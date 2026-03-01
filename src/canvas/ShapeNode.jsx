@@ -239,6 +239,27 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
         }
     }, [isSelected]);
 
+    // Update text dimensions after rendering
+    useEffect(() => {
+        if (shapeProps.type === 'text' && shapeRef.current) {
+            const node = shapeRef.current;
+            const currentWidth = node.width();
+            const currentHeight = node.height();
+            
+            // Only update if dimensions have changed and are valid
+            if (currentHeight > 0 && (
+                !shapeProps.height || 
+                Math.abs(shapeProps.height - currentHeight) > 1
+            )) {
+                onChange({
+                    ...shapeProps,
+                    height: currentHeight,
+                    width: currentWidth,
+                });
+            }
+        }
+    }, [shapeProps.text, shapeProps.fontSize, shapeProps.fontFamily, shapeProps.fontWeight, shapeProps.fontStyle]);
+
     const handleDragEnd = (e) => {
         if (canvasLocked || shapeProps.locked) return;
         onChange({
@@ -354,7 +375,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
                 x: node.x(),
                 y: node.y(),
                 width: Math.max(node.width() * scaleX, node.fontSize() || 20),
-
+                height: node.height() * scaleY,
                 rotation: node.rotation()
             });
         } else {
@@ -376,7 +397,8 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
 
     let node = null;
     const shapeFilled = Boolean(shapeProps.shapeFilled);
-    const shapeColor = shapeProps.fill || '#0f172a';
+    const fillColor = shapeProps.fill || '#0f172a';
+    const strokeColor = shapeProps.stroke || '#0f172a';
     const shapeStrokeWidth = 4;
     const commonProps = {
         ...shapeProps,
@@ -392,17 +414,17 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
     };
 
     if (shapeProps.type === 'rect') {
-        node = <Rect {...commonProps} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
+        node = <Rect {...commonProps} fill={shapeFilled ? fillColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={strokeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type === 'circle') {
-        node = <Circle {...commonProps} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
+        node = <Circle {...commonProps} fill={shapeFilled ? fillColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={strokeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type === 'triangle') {
-        node = <RegularPolygon {...commonProps} sides={3} radius={shapeProps.radius || 50} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
+        node = <RegularPolygon {...commonProps} sides={3} radius={shapeProps.radius || 50} fill={shapeFilled ? fillColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={strokeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type === 'star') {
-        node = <Star {...commonProps} numPoints={5} innerRadius={shapeProps.innerRadius || 25} outerRadius={shapeProps.outerRadius || 50} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
+        node = <Star {...commonProps} numPoints={5} innerRadius={shapeProps.innerRadius || 25} outerRadius={shapeProps.outerRadius || 50} fill={shapeFilled ? fillColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={strokeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type === 'pentagon') {
-        node = <RegularPolygon {...commonProps} sides={5} radius={shapeProps.radius || 50} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
+        node = <RegularPolygon {...commonProps} sides={5} radius={shapeProps.radius || 50} fill={shapeFilled ? fillColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={strokeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type === 'hexagon') {
-        node = <RegularPolygon {...commonProps} sides={6} radius={shapeProps.radius || 50} fill={shapeFilled ? shapeColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={shapeColor} strokeWidth={shapeStrokeWidth} />;
+        node = <RegularPolygon {...commonProps} sides={6} radius={shapeProps.radius || 50} fill={shapeFilled ? fillColor : 'rgba(0,0,0,0)'} fillEnabled={true} stroke={strokeColor} strokeWidth={shapeStrokeWidth} />;
     } else if (shapeProps.type.startsWith('icon-')) {
         node = <IconShape {...commonProps} iconType={shapeProps.iconType || shapeProps.type} />;
     } else if (shapeProps.type === 'text') {
@@ -429,7 +451,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
         // Combine fontWeight and fontStyle for Konva
         let combinedFontStyle = '';
         if (fontWeight === 'bold') combinedFontStyle += 'bold';
-        if (fontStyleValue === 'italic') {
+        if (fontStyleValue.toLowerCase().includes('italic')) {
             combinedFontStyle += (combinedFontStyle ? ' italic' : 'italic');
         }
         if (!combinedFontStyle) combinedFontStyle = 'normal';

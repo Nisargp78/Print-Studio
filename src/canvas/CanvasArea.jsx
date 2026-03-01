@@ -4,17 +4,55 @@ import { useDesign } from '../context/useDesignContext';
 import ShapeNode from './ShapeNode';
 import FormatBar from '../components/FormatBar';
 
+const getElementBounds = (element) => {
+    const x = element.x ?? 0;
+    const y = element.y ?? 0;
+
+    if (element.type === 'circle') {
+        const radius = element.radius ?? 50;
+        return { x: x - radius, y: y - radius, width: radius * 2, height: radius * 2 };
+    }
+
+    if (element.type === 'triangle' || element.type === 'pentagon' || element.type === 'hexagon') {
+        const radius = element.radius ?? 50;
+        return { x: x - radius, y: y - radius, width: radius * 2, height: radius * 2 };
+    }
+
+    if (element.type === 'star') {
+        const outerRadius = element.outerRadius ?? 50;
+        return { x: x - outerRadius, y: y - outerRadius, width: outerRadius * 2, height: outerRadius * 2 };
+    }
+
+    if (element.type === 'text') {
+        const width = element.width ?? 120;
+        const height = element.height ?? (element.fontSize ?? 32);
+        return { x, y, width, height };
+    }
+
+    const width = element.width ?? 100;
+    const height = element.height ?? 100;
+    return { x, y, width, height };
+};
+
+const hasIntersection = (a, b) => (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+);
+
 const CanvasArea = ({ stageRef }) => {
     const {
         elements,
         selectedId,
+        selectedIds,
         setSelectedId,
+        setSelectedIds,
         backgroundColor,
         backgroundImage,
         canvasSize,
         zoom,
         updateElement,
-        deleteElement,
         activeTab,
         setActiveTab,
         isCanvasLocked,
@@ -22,10 +60,19 @@ const CanvasArea = ({ stageRef }) => {
         redo,
         copyElement,
         pasteElement,
+        moveSelectedElements,
+        deleteSelectedElements,
     } = useDesign();
 
     const prevElementsLengthRef = useRef(elements.length);
     const [bgImage, setBgImage] = useState(null);
+    const [selectionRect, setSelectionRect] = useState({
+        visible: false,
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0,
+    });
 
     // Load background image when it changes
     useEffect(() => {
@@ -48,18 +95,21 @@ const CanvasArea = ({ stageRef }) => {
         const elementsAdded = elements.length > prevElementsLengthRef.current;
         prevElementsLengthRef.current = elements.length;
 
-        if (elementsAdded && !selectedId) {
+        if (elementsAdded && selectedIds.length === 0) {
             // Find first text element
             const firstTextNode = elements.find(el => el.type === 'text');
             if (firstTextNode) {
                 // Small delay to ensure render is complete
                 setTimeout(() => {
                     setSelectedId(firstTextNode.id);
-                    setActiveTab('quick_edit');
+                    // Only auto-open panel if one is already open
+                    if (activeTab) {
+                        setActiveTab('quick_edit');
+                    }
                 }, 50);
             }
         }
-    }, [elements, selectedId, setSelectedId, setActiveTab, isCanvasLocked]);
+    }, [elements, selectedIds, setSelectedId, setActiveTab, isCanvasLocked, activeTab]);
 
     // Handle keyboard events for deleting elements and other shortcuts
     useEffect(() => {
@@ -70,6 +120,8 @@ const CanvasArea = ({ stageRef }) => {
                 activeElement.tagName === 'INPUT' || 
                 activeElement.tagName === 'TEXTAREA'
             );
+
+            const selectedTargets = selectedIds.length ? selectedIds : (selectedId ? [selectedId] : []);
 
             // Undo (Ctrl+Z)
             if (e.ctrlKey && e.key === 'z' && !e.shiftKey && !isInputFocused) {
@@ -88,9 +140,9 @@ const CanvasArea = ({ stageRef }) => {
             }
 
             // Copy (Ctrl+C)
-            if (e.ctrlKey && e.key === 'c' && !isInputFocused && selectedId) {
+            if (e.ctrlKey && e.key === 'c' && !isInputFocused && selectedTargets.length === 1) {
                 e.preventDefault();
-                copyElement(selectedId);
+                copyElement(selectedTargets[0]);
                 return;
             }
 
@@ -102,33 +154,106 @@ const CanvasArea = ({ stageRef }) => {
             }
 
             // Delete
-            if (e.key === 'Delete' && selectedId && !isInputFocused) {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTargets.length > 0 && !isInputFocused) {
                 e.preventDefault();
-                deleteElement(selectedId);
+                deleteSelectedElements(selectedTargets);
+                return;
+            }
+
+            // Move selected elements with arrow keys
+            if (!isInputFocused && selectedTargets.length > 0 && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+                const step = e.shiftKey ? 10 : 1;
+                let deltaX = 0;
+                let deltaY = 0;
+
+                if (e.key === 'ArrowUp') deltaY = -step;
+                if (e.key === 'ArrowDown') deltaY = step;
+                if (e.key === 'ArrowLeft') deltaX = -step;
+                if (e.key === 'ArrowRight') deltaX = step;
+
+                moveSelectedElements(selectedTargets, deltaX, deltaY);
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedId, deleteElement, undo, redo, copyElement, pasteElement, isCanvasLocked]);
+    }, [selectedId, selectedIds, deleteSelectedElements, undo, redo, copyElement, pasteElement, moveSelectedElements, isCanvasLocked]);
 
-    const checkDeselect = (e) => {
+    const handleStageMouseDown = (e) => {
         if (isCanvasLocked) return;
-        const clickedOnEmpty = e.target === e.target.getStage() || 
-                               e.target.attrs.id === "bg-rect" ||
-                               e.target.attrs.listening === false;
-        if (clickedOnEmpty) {
-            setSelectedId(null);
+        const stage = e.target.getStage();
+        const pointer = stage?.getPointerPosition();
+        if (!pointer) return;
+
+        const clickedOnEmpty = e.target === stage ||
+            e.target.attrs.id === 'bg-rect' ||
+            e.target.attrs.listening === false;
+
+        if (!clickedOnEmpty) return;
+
+        setSelectionRect({
+            visible: true,
+            x1: pointer.x,
+            y1: pointer.y,
+            x2: pointer.x,
+            y2: pointer.y,
+        });
+    };
+
+    const handleStageMouseMove = (e) => {
+        if (!selectionRect.visible) return;
+        const pointer = e.target.getStage()?.getPointerPosition();
+        if (!pointer) return;
+
+        setSelectionRect((prev) => ({
+            ...prev,
+            x2: pointer.x,
+            y2: pointer.y,
+        }));
+    };
+
+    const handleStageMouseUp = () => {
+        if (!selectionRect.visible) return;
+
+        const x = Math.min(selectionRect.x1, selectionRect.x2);
+        const y = Math.min(selectionRect.y1, selectionRect.y2);
+        const width = Math.abs(selectionRect.x2 - selectionRect.x1);
+        const height = Math.abs(selectionRect.y2 - selectionRect.y1);
+
+        if (width < 3 && height < 3) {
+            setSelectedIds([]);
             if (activeTab === 'quick_edit') {
                 setActiveTab('elements');
             }
+            setSelectionRect({ visible: false, x1: 0, y1: 0, x2: 0, y2: 0 });
+            return;
         }
+
+        const selectionBox = { x, y, width, height };
+        const idsInSelection = elements
+            .filter((element) => !element.locked)
+            .filter((element) => hasIntersection(getElementBounds(element), selectionBox))
+            .map((element) => element.id);
+
+        setSelectedIds(idsInSelection);
+        // Only switch panels if one is already open
+        if (activeTab) {
+            if (idsInSelection.length === 1) {
+                const selected = elements.find((element) => element.id === idsInSelection[0]);
+                setActiveTab(selected?.type === 'image' ? 'upload' : 'quick_edit');
+            } else {
+                setActiveTab('elements');
+            }
+        }
+
+        setSelectionRect({ visible: false, x1: 0, y1: 0, x2: 0, y2: 0 });
     };
 
     return (
         <div className="flex-1 flex flex-col bg-gray-100/50 overflow-hidden">
             {/* Format bar - fixed height */}
-            <div className="flex-shrink-0">
+            <div className="shrink-0 relative z-100">
                 <FormatBar />
             </div>
 
@@ -141,8 +266,8 @@ const CanvasArea = ({ stageRef }) => {
                             backgroundImage: bgImage ? `url(${backgroundImage})` : 'none',
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
-                            width: canvasSize.width * zoom,
-                            height: canvasSize.height * zoom,
+                            width: canvasSize.width,
+                            height: canvasSize.height,
                             transform: `scale(${zoom})`,
                             transformOrigin: 'center center',
                         }}
@@ -152,8 +277,12 @@ const CanvasArea = ({ stageRef }) => {
                             height={canvasSize.height}
                             scaleX={1}
                             scaleY={1}
-                            onMouseDown={checkDeselect}
-                            onTouchStart={checkDeselect}
+                            onMouseDown={handleStageMouseDown}
+                            onMouseMove={handleStageMouseMove}
+                            onMouseUp={handleStageMouseUp}
+                            onTouchStart={handleStageMouseDown}
+                            onTouchMove={handleStageMouseMove}
+                            onTouchEnd={handleStageMouseUp}
                             ref={stageRef}
                         >
                             <Layer>
@@ -183,16 +312,33 @@ const CanvasArea = ({ stageRef }) => {
                                     <ShapeNode
                                         key={el.id}
                                         shapeProps={el}
-                                        isSelected={el.id === selectedId}
+                                        isSelected={selectedIds.includes(el.id)}
                                         onSelect={() => {
                                             if (isCanvasLocked) return;
                                             setSelectedId(el.id);
-                                            setActiveTab(el.type === 'image' ? 'upload' : 'quick_edit');
+                                            // Only switch panels if one is already open
+                                            if (activeTab) {
+                                                setActiveTab(el.type === 'image' ? 'upload' : 'quick_edit');
+                                            }
                                         }}
                                         onChange={(newProps) => updateElement(el.id, newProps)}
                                         canvasLocked={isCanvasLocked}
                                     />
                                 ))}
+
+                                {selectionRect.visible && (
+                                    <Rect
+                                        x={Math.min(selectionRect.x1, selectionRect.x2)}
+                                        y={Math.min(selectionRect.y1, selectionRect.y2)}
+                                        width={Math.abs(selectionRect.x2 - selectionRect.x1)}
+                                        height={Math.abs(selectionRect.y2 - selectionRect.y1)}
+                                        fill="rgba(59, 130, 246, 0.12)"
+                                        stroke="#3b82f6"
+                                        strokeWidth={1}
+                                        dash={[4, 4]}
+                                        listening={false}
+                                    />
+                                )}
                             </Layer>
                         </Stage>
                     </div>

@@ -9,13 +9,26 @@ export const DesignProvider = ({ children }) => {
     const [uploadedImages, setUploadedImages] = useState([]);
     const [clipboard, setClipboard] = useState(null);
 
-    const [selectedId, setSelectedId] = useState(null);
+    const [selectedId, setSelectedIdState] = useState(null);
+    const [selectedIds, setSelectedIdsState] = useState([]);
     const [backgroundColor, setBackgroundColor] = useState('#ffffff');
     const [backgroundImage, setBackgroundImage] = useState(null);
     const [activeTab, setActiveTab] = useState('elements');
     const [isCanvasLocked, setIsCanvasLocked] = useState(false);
     const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600, name: 'Default (800x600)' });
     const [zoom, setZoom] = useState(1);
+
+    const setSelectedId = (id) => {
+        const nextId = id || null;
+        setSelectedIdState(nextId);
+        setSelectedIdsState(nextId ? [nextId] : []);
+    };
+
+    const setSelectedIds = (ids = []) => {
+        const uniqueIds = [...new Set((ids || []).filter(Boolean))];
+        setSelectedIdsState(uniqueIds);
+        setSelectedIdState(uniqueIds.length === 1 ? uniqueIds[0] : null);
+    };
 
     const saveHistory = (currentState) => {
         setHistoryList((prev) => [...prev, JSON.parse(JSON.stringify(currentState))]);
@@ -59,13 +72,13 @@ export const DesignProvider = ({ children }) => {
 
         let typeDefaults = {};
         if (type === 'rect') {
-            typeDefaults = { width: 100, height: 100, shapeFilled: false };
+            typeDefaults = { width: 100, height: 100, shapeFilled: false, stroke: '#0f172a' };
         } else if (type === 'circle') {
-            typeDefaults = { radius: 50, shapeFilled: false };
+            typeDefaults = { radius: 50, shapeFilled: false, stroke: '#0f172a' };
         } else if (type === 'triangle' || type === 'pentagon' || type === 'hexagon') {
-            typeDefaults = { radius: 50, shapeFilled: false };
+            typeDefaults = { radius: 50, shapeFilled: false, stroke: '#0f172a' };
         } else if (type === 'star') {
-            typeDefaults = { innerRadius: 25, outerRadius: 50, shapeFilled: false };
+            typeDefaults = { innerRadius: 25, outerRadius: 50, shapeFilled: false, stroke: '#0f172a' };
         } else if (type === 'text') {
             typeDefaults = {
                 text: 'Double click to edit',
@@ -110,10 +123,20 @@ export const DesignProvider = ({ children }) => {
         saveHistory(elements);
 
         setElements((prev) => prev.filter((el) => el.id !== id));
-        if (selectedId === id) {
-            setSelectedId(null);
+        if (selectedId === id || selectedIds.includes(id)) {
+            setSelectedIds([]);
             setActiveTab('elements');
         }
+    };
+
+    const deleteSelectedElements = (ids = []) => {
+        const targets = [...new Set((ids || []).filter(Boolean))];
+        if (!targets.length) return;
+
+        saveHistory(elements);
+        setElements((prev) => prev.filter((el) => !targets.includes(el.id)));
+        setSelectedIds([]);
+        setActiveTab('elements');
     };
 
     const toggleLockElement = (id) => {
@@ -167,9 +190,32 @@ export const DesignProvider = ({ children }) => {
         setActiveTab('quick_edit');
     };
 
+    const moveSelectedElements = (ids = [], deltaX = 0, deltaY = 0) => {
+        if (!deltaX && !deltaY) return;
+
+        const targets = [...new Set((ids || []).filter(Boolean))];
+        if (!targets.length) return;
+
+        const targetSet = new Set(targets);
+        const movable = elements.some((el) => targetSet.has(el.id) && !el.locked);
+        if (!movable) return;
+
+        saveHistory(elements);
+        setElements((prev) =>
+            prev.map((el) => {
+                if (!targetSet.has(el.id) || el.locked) return el;
+                return {
+                    ...el,
+                    x: (el.x ?? 0) + deltaX,
+                    y: (el.y ?? 0) + deltaY,
+                };
+            })
+        );
+    };
+
     const toggleCanvasLock = () => {
         setIsCanvasLocked((prev) => !prev);
-        setSelectedId(null);
+        setSelectedIds([]);
     };
 
     const addUploadedImage = (imageData) => {
@@ -202,7 +248,9 @@ export const DesignProvider = ({ children }) => {
         setBackgroundImage(null);
     };
 
-    const selectedElement = elements.find((el) => el.id === selectedId);
+    const selectedElement = selectedIds.length === 1
+        ? elements.find((el) => el.id === selectedIds[0])
+        : null;
     const selectedType = selectedElement ? selectedElement.type : null;
 
     return (
@@ -210,6 +258,7 @@ export const DesignProvider = ({ children }) => {
             value={{
                 elements,
                 selectedId,
+                selectedIds,
                 selectedType,
                 backgroundColor,
                 activeTab,
@@ -225,6 +274,7 @@ export const DesignProvider = ({ children }) => {
                 redo,
                 setElements,
                 setSelectedId,
+                setSelectedIds,
                 setBackgroundColor,
                 setBackgroundImage,
                 setActiveTab,
@@ -233,10 +283,12 @@ export const DesignProvider = ({ children }) => {
                 addElement,
                 updateElement,
                 deleteElement,
+                deleteSelectedElements,
                 toggleLockElement,
                 duplicateElement,
                 copyElement,
                 pasteElement,
+                moveSelectedElements,
                 toggleCanvasLock,
                 addUploadedImage,
                 removeUploadedImage,

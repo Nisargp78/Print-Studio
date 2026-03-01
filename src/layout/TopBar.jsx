@@ -34,7 +34,7 @@ const TopBar = ({ stageRef }) => {
                     <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
                         <Brush size={20} className="text-white" />
                     </div>
-                    <div className="font-bold text-xl text-gray-800 tracking-tight">PrintStudio</div>
+                    <div className="font-bold text-xl text-gray-800 tracking-tight">Print Studio</div>
                 </div>
             </div>
 

@@ -137,6 +137,14 @@ const TextToolbar = () => {
     updateElement(selectedElement.id, props);
   };
 
+  const handleTypographyUpdate = (props) => {
+    updateElement(selectedElement.id, {
+      ...props,
+      width: undefined,
+      height: undefined,
+    });
+  };
+
   const toggleBold = () => {
     let newWeight = 'normal';
     if (!isBold) {
@@ -146,20 +154,20 @@ const TextToolbar = () => {
       // If already bold (any variant), set to normal
       newWeight = 'normal';
     }
-    handleUpdate({
+    handleTypographyUpdate({
       fontWeight: newWeight,
     });
   };
 
   const toggleItalic = () => {
     const newStyle = isItalic ? 'normal' : 'italic';
-    handleUpdate({
+    handleTypographyUpdate({
       fontStyle: newStyle,
     });
   };
 
   const toggleUnderline = () => {
-    handleUpdate({
+    handleTypographyUpdate({
       textDecoration: isUnderline ? '' : 'underline',
     });
   };
@@ -170,11 +178,11 @@ const TextToolbar = () => {
 
   const handleFontSelect = (font) => {
     ensureGoogleFont(font.family);
-    handleUpdate({ fontFamily: font.family });
+    handleTypographyUpdate({ fontFamily: font.family });
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       <FontPicker
         selectedFont={selectedFont}
         onSelectFont={handleFontSelect}
@@ -197,7 +205,7 @@ const TextToolbar = () => {
               <button
                 key={size}
                 onClick={() => {
-                  handleUpdate({ fontSize: size });
+                  handleTypographyUpdate({ fontSize: size });
                   setIsFontSizeOpen(false);
                 }}
                 className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 ${
