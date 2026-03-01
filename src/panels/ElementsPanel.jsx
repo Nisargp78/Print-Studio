@@ -3,7 +3,7 @@ import {
     Square, Circle, Triangle, Star, Hexagon, Pentagon,
     Truck, Vote, Leaf, Wrench, Paintbrush, Home,
     Mail, Phone, MapPin, Clock, User, Heart,
-    ShoppingCart, Search, Settings, Check, X, Info
+    ShoppingCart, Search, Check, X, Info
 } from 'lucide-react';
 import { useDesign } from '../context/useDesignContext';
 
@@ -52,7 +52,6 @@ const ELEMENTS_BY_CATEGORY = {
         { type: 'icon-wrench', icon: Wrench, label: 'Wrench' },
         { type: 'icon-phone', icon: Phone, label: 'Phone' },
         { type: 'icon-home', icon: Home, label: 'Home' },
-        { type: 'icon-settings', icon: Settings, label: 'Settings' },
     ],
     painting: [
         { type: 'icon-paintbrush', icon: Paintbrush, label: 'Brush' },
@@ -81,7 +80,6 @@ const ELEMENTS_BY_CATEGORY = {
     icons: [
         { type: 'icon-search', icon: Search, label: 'Search' },
         { type: 'icon-cart', icon: ShoppingCart, label: 'Cart' },
-        { type: 'icon-settings', icon: Settings, label: 'Settings' },
         { type: 'icon-check', icon: Check, label: 'Check' },
         { type: 'icon-x', icon: X, label: 'Close' },
         { type: 'icon-info', icon: Info, label: 'Info' },
