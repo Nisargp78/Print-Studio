@@ -37,8 +37,8 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         const nodePadding = typeof textNode.padding() === 'number' ? textNode.padding() : 0;
         const nodeWidth = Math.max(40, textNode.width());
         const nodeHeight = Math.max(textNode.fontSize(), textNode.height());
-        // Add bottom padding for underline and spacing
-        const bottomPadding = nodePadding + 8;
+        // Add small bottom padding for underline
+        const bottomPadding = nodePadding + 4;
         
         // Style wrapper
         wrapper.style.position = 'absolute';
@@ -49,7 +49,6 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         wrapper.style.zIndex = '1000';
         wrapper.style.border = '1px solid #3b82f6';
         wrapper.style.boxSizing = 'border-box';
-        wrapper.style.overflow = 'visible';
         
         // Add corner and edge handles with resize functionality
         const handlePositions = [
@@ -166,8 +165,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         textarea.style.background = 'transparent';
         textarea.style.outline = 'none';
         textarea.style.resize = 'none';
-        textarea.style.wordWrap = 'break-word';
-        textarea.style.whiteSpace = 'pre-wrap';
+        textarea.style.whiteSpace = 'nowrap';
 
         const rotation = textNode.rotation();
         let transform = '';
@@ -185,23 +183,50 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
         const resizeTextarea = () => {
-            // Reset dimensions to measure actual content
-            textarea.style.height = 'auto';
+            // Create a temporary element to measure text width with all proper styling
+            const temp = document.createElement('div');
+            temp.style.position = 'absolute';
+            temp.style.visibility = 'hidden';
+            temp.style.whiteSpace = 'nowrap';
+            temp.style.fontSize = `${textNode.fontSize()}px`;
+            temp.style.fontFamily = textNode.fontFamily();
+            temp.style.fontWeight = isBold ? 'bold' : 'normal';
+            temp.style.fontStyle = isItalic ? 'italic' : 'normal';
+            temp.style.lineHeight = `${textNode.lineHeight()}`;
+            temp.style.padding = '0';
+            temp.style.margin = '0';
+            temp.style.border = 'none';
+            temp.style.display = 'inline-block';
             
-            // Force reflow to get accurate scrollHeight
+            // Ensure we measure actual text content
+            const textToMeasure = textarea.value || 'a';
+            temp.textContent = textToMeasure;
+            
+            document.body.appendChild(temp);
+            // Use getBoundingClientRect for more accurate measurement including spaces
+            const contentWidth = temp.getBoundingClientRect().width;
+            document.body.removeChild(temp);
+            
+            // Measure height with textarea
+            textarea.style.width = 'auto';
+            textarea.style.height = 'auto';
             const scrollHeight = textarea.scrollHeight;
             
-            // Only adjust height, keep width fixed
+            // Calculate new dimensions with minimal padding
+            const requiredWidth = Math.max(nodeWidth, Math.ceil(contentWidth) + nodePadding * 2);
             const requiredHeight = Math.max(nodeHeight + nodePadding + bottomPadding, scrollHeight + nodePadding + bottomPadding);
             
+            wrapper.style.width = `${requiredWidth}px`;
             wrapper.style.height = `${requiredHeight}px`;
+            textarea.style.width = `${requiredWidth - nodePadding * 2}px`;
             textarea.style.height = `${scrollHeight}px`;
+            
+            // Store dimensions for later use
+            wrapper.dataset.contentWidth = contentWidth;
+            wrapper.dataset.scrollHeight = scrollHeight;
         };
 
-        // Ensure first resize happens after DOM is ready
-        setTimeout(() => {
-            resizeTextarea();
-        }, 0);
+        resizeTextarea();
         textarea.addEventListener('input', resizeTextarea);
 
         const removeTextarea = (save) => {
@@ -210,9 +235,18 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
             textarea.removeEventListener('keydown', handleKeyDown);
 
             if (save) {
+                // Get stored dimensions from last measurement
+                const contentWidth = parseInt(wrapper.dataset.contentWidth) || 0;
+                const scrollHeight = parseInt(wrapper.dataset.scrollHeight) || nodeHeight;
+                
+                const finalWidth = Math.max(nodeWidth, contentWidth + nodePadding * 2);
+                const finalHeight = Math.max(nodeHeight, scrollHeight + nodePadding + bottomPadding);
+                
                 onChange({
                     ...shapeProps,
                     text: textarea.value,
+                    width: finalWidth,
+                    height: finalHeight,
                 });
             }
 
@@ -220,9 +254,12 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
                 document.body.removeChild(wrapper);
             }
 
-            textNode.show();
-            if (trRef.current && isSelected) trRef.current.show();
-            textNode.getLayer()?.batchDraw();
+            // Delay to allow React state updates to complete
+            setTimeout(() => {
+                textNode.show();
+                if (trRef.current && isSelected) trRef.current.show();
+                textNode.getLayer()?.batchDraw();
+            }, 0);
         };
 
         const handleKeyDown = (e) => {
