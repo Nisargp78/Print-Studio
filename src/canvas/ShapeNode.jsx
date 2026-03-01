@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Rect, Circle, Text, Transformer, Image as KonvaImage, Star, RegularPolygon } from 'react-konva';
 import useImage from 'use-image';
 import IconShape from './IconShape';
+import { measureTextCanvas } from '../utils/measureText';
 
 const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithoutHistory, canvasLocked = false }) => {
     const shapeRef = useRef();
@@ -181,31 +182,16 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
         input.setSelectionRange(input.value.length, input.value.length);
 
         const resizeInput = () => {
-            // Create a temporary element to measure text width with all proper styling
-            const temp = document.createElement('div');
-            temp.style.position = 'absolute';
-            temp.style.visibility = 'hidden';
-            temp.style.whiteSpace = 'nowrap';
-            temp.style.fontSize = `${textNode.fontSize()}px`;
-            temp.style.fontFamily = textNode.fontFamily();
-            temp.style.fontWeight = isBold ? 'bold' : 'normal';
-            temp.style.fontStyle = isItalic ? 'italic' : 'normal';
-            temp.style.lineHeight = `${textNode.lineHeight()}`;
-            temp.style.padding = '0';
-            temp.style.margin = '0';
-            temp.style.border = 'none';
-            temp.style.display = 'inline-block';
-            
-            // Ensure we measure actual text content
+            // Use Canvas 2D API - same engine as Konva. Accurate for any text (1 space, 10 spaces, etc).
             const textToMeasure = input.value || 'a';
-            temp.textContent = textToMeasure;
-            
-            document.body.appendChild(temp);
-            // Use getBoundingClientRect for more accurate measurement including spaces
-            // Add buffer for leading/trailing spaces and DOM vs canvas rendering differences
-            const MEASURE_BUFFER = 20;
-            const contentWidth = temp.getBoundingClientRect().width + MEASURE_BUFFER;
-            document.body.removeChild(temp);
+            const fontProps = {
+                fontSize: textNode.fontSize(),
+                fontFamily: textNode.fontFamily(),
+                fontWeight: isBold ? 'bold' : 'normal',
+                fontStyle: isItalic ? 'italic' : 'normal',
+            };
+            const measured = measureTextCanvas(textToMeasure, fontProps);
+            const contentWidth = measured ? Math.ceil(measured.width) + 4 : 44;
             
             // Single-line height: fontSize * lineHeight + padding (input cannot have newlines)
             const lineHeightVal = parseFloat(textNode.lineHeight()) || 1.2;
@@ -271,14 +257,19 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithout
             }
         };
 
+        // Delay adding outside-click listener to avoid the double-click that opened the editor
+        // from immediately triggering a save/close before the user can type
+        const readyAt = Date.now() + 150;
         const handleOutsideClick = (e) => {
+            if (Date.now() < readyAt) return;
             if (!wrapper.contains(e.target)) {
+                window.removeEventListener('click', handleOutsideClick);
                 removeInput(true);
             }
         };
 
         input.addEventListener('keydown', handleKeyDown);
-        setTimeout(() => window.addEventListener('click', handleOutsideClick));
+        setTimeout(() => window.addEventListener('click', handleOutsideClick), 0);
     };
 
     useEffect(() => {
