@@ -3,9 +3,11 @@ import { Rect, Circle, Text, Transformer, Image as KonvaImage, Star, RegularPoly
 import useImage from 'use-image';
 import IconShape from './IconShape';
 
-const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = false }) => {
+const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, onChangeWithoutHistory, canvasLocked = false }) => {
     const shapeRef = useRef();
     const trRef = useRef();
+    const dragStartStateRef = useRef(null);
+    const isBeingDraggedRef = useRef(false);
 
     const startInlineTextEdit = () => {
         if (canvasLocked || shapeProps.locked || shapeProps.type !== 'text') return;
@@ -251,17 +253,28 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
                 !shapeProps.height || 
                 Math.abs(shapeProps.height - currentHeight) > 1
             )) {
-                onChange({
-                    ...shapeProps,
-                    height: currentHeight,
-                    width: currentWidth,
-                });
+                // Use onChangeWithoutHistory for dimension updates to avoid creating extra history entries
+                if (onChangeWithoutHistory) {
+                    onChangeWithoutHistory({
+                        ...shapeProps,
+                        height: currentHeight,
+                        width: currentWidth,
+                    });
+                } else {
+                    onChange({
+                        ...shapeProps,
+                        height: currentHeight,
+                        width: currentWidth,
+                    });
+                }
             }
         }
-    }, [shapeProps.text, shapeProps.fontSize, shapeProps.fontFamily, shapeProps.fontWeight, shapeProps.fontStyle]);
+    }, [shapeProps.text, shapeProps.fontSize, shapeProps.fontFamily, shapeProps.fontWeight, shapeProps.fontStyle, onChangeWithoutHistory, onChange]);
 
     const handleDragEnd = (e) => {
         if (canvasLocked || shapeProps.locked) return;
+        isBeingDraggedRef.current = false;
+        // Only save history once when drag completes
         onChange({
             ...shapeProps,
             x: e.target.x(),
@@ -270,65 +283,15 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
     };
 
     const handleDragMove = (e) => {
+        // Don't update state during drag - just let Konva handle the visual movement
+        // This prevents creating multiple history entries
         if (canvasLocked || shapeProps.locked) return;
-        onChange({
-            ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
-        });
     };
 
     const handleTransform = () => {
+        // Don't update state during transform - just let Konva handle the visual changes
+        // This prevents creating multiple history entries
         if (canvasLocked || shapeProps.locked) return;
-        const node = shapeRef.current;
-        if (!node) return;
-
-        const scaleX = node.scaleX();
-        const scaleY = node.scaleY();
-
-        if (shapeProps.type === 'rect' || shapeProps.type === 'image' || shapeProps.type.startsWith('icon-')) {
-            onChange({
-                ...shapeProps,
-                x: node.x(),
-                y: node.y(),
-                width: Math.max(5, node.width() * scaleX),
-                height: Math.max(5, node.height() * scaleY),
-                rotation: node.rotation()
-            });
-        } else if (shapeProps.type === 'circle' || shapeProps.type === 'triangle' || shapeProps.type === 'pentagon' || shapeProps.type === 'hexagon') {
-            onChange({
-                ...shapeProps,
-                x: node.x(),
-                y: node.y(),
-                radius: Math.max(5, (node.radius ? node.radius() : shapeProps.radius) * Math.max(scaleX, scaleY)),
-                rotation: node.rotation()
-            });
-        } else if (shapeProps.type === 'star') {
-            const scale = Math.max(scaleX, scaleY);
-            onChange({
-                ...shapeProps,
-                x: node.x(),
-                y: node.y(),
-                innerRadius: Math.max(5, shapeProps.innerRadius * scale),
-                outerRadius: Math.max(5, shapeProps.outerRadius * scale),
-                rotation: node.rotation()
-            });
-        } else if (shapeProps.type === 'text') {
-            onChange({
-                ...shapeProps,
-                x: node.x(),
-                y: node.y(),
-                width: Math.max(node.width() * scaleX, node.fontSize() || 20),
-                rotation: node.rotation()
-            });
-        } else {
-            onChange({
-                ...shapeProps,
-                x: node.x(),
-                y: node.y(),
-                rotation: node.rotation()
-            });
-        }
     };
 
     const handleTransformEnd = () => {
@@ -342,6 +305,7 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
         node.scaleX(1);
         node.scaleY(1);
 
+        // Save history only when transform ends
         if (shapeProps.type === 'rect' || shapeProps.type === 'image' || shapeProps.type.startsWith('icon-')) {
             onChange({
                 ...shapeProps,
@@ -392,6 +356,12 @@ const ShapeNode = ({ shapeProps, isSelected, onSelect, onChange, canvasLocked = 
 
     const handleDragStart = () => {
         if (canvasLocked || shapeProps.locked) return;
+        // Save the initial state at the start of drag
+        dragStartStateRef.current = {
+            x: shapeProps.x || 0,
+            y: shapeProps.y || 0,
+        };
+        isBeingDraggedRef.current = true;
         onSelect?.();
     };
 

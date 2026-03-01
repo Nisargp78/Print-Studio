@@ -53,6 +53,7 @@ const CanvasArea = ({ stageRef }) => {
         canvasSize,
         zoom,
         updateElement,
+        updateElementWithoutHistory,
         activeTab,
         setActiveTab,
         isCanvasLocked,
@@ -322,6 +323,7 @@ const CanvasArea = ({ stageRef }) => {
                                             }
                                         }}
                                         onChange={(newProps) => updateElement(el.id, newProps)}
+                                        onChangeWithoutHistory={(newProps) => updateElementWithoutHistory(el.id, newProps)}
                                         canvasLocked={isCanvasLocked}
                                     />
                                 ))}

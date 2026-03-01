@@ -119,6 +119,12 @@ export const DesignProvider = ({ children }) => {
         );
     };
 
+    const updateElementWithoutHistory = (id, newProps) => {
+        setElements((prev) =>
+            prev.map((el) => (el.id === id ? { ...el, ...newProps } : el))
+        );
+    };
+
     const deleteElement = (id) => {
         saveHistory(elements);
 
@@ -282,6 +288,7 @@ export const DesignProvider = ({ children }) => {
                 setZoom,
                 addElement,
                 updateElement,
+                updateElementWithoutHistory,
                 deleteElement,
                 deleteSelectedElements,
                 toggleLockElement,
