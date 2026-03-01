@@ -11,9 +11,11 @@ const FormatBar = () => {
   const {
     elements,
     selectedElement,
+    selectedIds,
     updateElement,
     deleteElement,
     duplicateElement,
+    deleteSelectedElements,
     toggleLockElement,
     isCanvasLocked,
     toggleCanvasLock,
@@ -26,13 +28,17 @@ const FormatBar = () => {
   const [isCropOpen, setIsCropOpen] = useState(false);
   const [isFlipOpen, setIsFlipOpen] = useState(false);
 
-  const hasSelection = !!selectedElement;
+  const hasSelection = selectedIds && selectedIds.length > 0;
+  const hasSingleSelection = selectedElement !== null && selectedIds.length === 1;
 
   const transparency = useMemo(() => {
-    if (!selectedElement) return 0;
-    const opacity = typeof selectedElement.opacity === 'number' ? selectedElement.opacity : 1;
+    // For multi-selection, use the first selected element's opacity
+    if (!hasSelection) return 0;
+    const firstSelectedEl = selectedElement || elements.find(el => selectedIds.includes(el.id));
+    if (!firstSelectedEl) return 0;
+    const opacity = typeof firstSelectedEl.opacity === 'number' ? firstSelectedEl.opacity : 1;
     return clamp(Math.round((1 - opacity) * 100), 0, 100);
-  }, [selectedElement]);
+  }, [selectedElement, selectedIds, elements, hasSelection]);
 
   useEffect(() => {
     if (!hasSelection) {
@@ -100,9 +106,13 @@ const FormatBar = () => {
   };
 
   const setTransparency = (value) => {
-    if (!selectedElement) return;
+    if (!hasSelection) return;
     const t = clamp(Number(value), 0, 100);
-    updateElement(selectedElement.id, { opacity: 1 - t / 100 });
+    const opacity = 1 - t / 100;
+    // Apply to all selected elements
+    selectedIds.forEach(id => {
+      updateElement(id, { opacity });
+    });
   };
 
   // Color property for images
@@ -324,15 +334,15 @@ const FormatBar = () => {
         </>
       )}
 
-      {/* Position control - always show but disabled when nothing selected */}
+      {/* Position control - only for single selection */}
       <div className="relative format-dropdown">
         <button
           type="button"
-          onClick={() => hasSelection && setIsPositionOpen((v) => !v)}
-          disabled={!hasSelection}
+          onClick={() => hasSingleSelection && setIsPositionOpen((v) => !v)}
+          disabled={!hasSingleSelection}
           className={[
             'text-sm px-3 py-1.5 rounded border flex items-center gap-2',
-            hasSelection 
+            hasSingleSelection 
               ? 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50' 
               : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
           ].join(' ')}
@@ -342,7 +352,7 @@ const FormatBar = () => {
           <ChevronDown size={16} className="text-gray-500" />
         </button>
 
-        {isPositionOpen && hasSelection && (
+        {isPositionOpen && hasSingleSelection && (
           <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-3 w-64 z-99999">
             <div className="space-y-3">
               <div>
@@ -424,15 +434,15 @@ const FormatBar = () => {
         )}
       </div>
 
-      {/* Layers control - always show but disabled when nothing selected */}
+      {/* Layers control - only for single selection */}
       <div className="relative format-dropdown">
         <button
           type="button"
-          onClick={() => hasSelection && setIsLayersOpen((v) => !v)}
-          disabled={!hasSelection}
+          onClick={() => hasSingleSelection && setIsLayersOpen((v) => !v)}
+          disabled={!hasSingleSelection}
           className={[
             'text-sm px-3 py-1.5 rounded border flex items-center gap-2',
-            hasSelection 
+            hasSingleSelection 
               ? 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50' 
               : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
           ].join(' ')}
@@ -442,7 +452,7 @@ const FormatBar = () => {
           Layers
         </button>
 
-        {isLayersOpen && hasSelection && (
+        {isLayersOpen && hasSingleSelection && (
           <div className="absolute top-[calc(100%+8px)] left-0 bg-white border border-gray-200 shadow-lg rounded p-2 w-48 z-99999">
             <button
               onClick={bringToFront}
@@ -541,24 +551,24 @@ const FormatBar = () => {
         {isLocked ? <Unlock size={18} /> : <Lock size={18} />}
       </button>
 
-      {/* Copy */}
+      {/* Copy - only for single selection */}
       <button
         type="button"
         onClick={() => (selectedElement ? duplicateElement(selectedElement.id) : null)}
         className={[
           'p-2 rounded border border-transparent',
-          hasSelection && !isLocked ? 'hover:bg-gray-50 hover:border-gray-200' : 'cursor-not-allowed opacity-40',
+          hasSingleSelection && !isLocked ? 'hover:bg-gray-50 hover:border-gray-200' : 'cursor-not-allowed opacity-40',
         ].join(' ')}
         title="Copy"
-        disabled={!hasSelection || isLocked}
+        disabled={!hasSingleSelection || isLocked}
       >
-        <Copy size={18} className={!hasSelection || isLocked ? 'text-gray-300' : 'text-gray-800'} />
+        <Copy size={18} className={!hasSingleSelection || isLocked ? 'text-gray-300' : 'text-gray-800'} />
       </button>
 
       {/* Delete */}
       <button
         type="button"
-        onClick={() => (selectedElement ? deleteElement(selectedElement.id) : null)}
+        onClick={() => hasSelection ? deleteSelectedElements(selectedIds) : null}
         className={[
           'p-2 rounded border border-transparent text-red-600',
           hasSelection && !isLocked ? 'hover:bg-red-50 hover:border-red-200' : 'cursor-not-allowed opacity-40',
