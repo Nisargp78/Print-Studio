@@ -5,6 +5,7 @@ import PanelManager from '../panels/PanelManager';
 import CanvasArea from '../canvas/CanvasArea';
 
 const MainLayout = () => {
+    // We keep the ref here so TopBar can read it for Export
     const stageRef = useRef(null);
 
     return (
